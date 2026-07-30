@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import logo from "../assets/logo.png";
 
 export default function Login() {
   const { login } = useAuth();
@@ -33,7 +34,7 @@ export default function Login() {
       <div className="auth-card">
         <div className="d-flex align-items-center gap-2 mb-4">
           <span className="icon-circle bg-primary-brand text-white" style={{ width: 44, height: 44 }}>
-            <i className="bi bi-geo-alt-fill fs-5" />
+            <img src={logo} alt="North Industrial Area Wholesale Locator" className="sidebar-logo" />
           </span>
           <div className="d-flex flex-column lh-1">
             <span className="fw-bold" style={{ fontSize: "0.95rem" }}>NORTH INDUSTRIAL AREA</span>

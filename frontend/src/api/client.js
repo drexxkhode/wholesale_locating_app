@@ -1,8 +1,9 @@
 // Central place that talks to your Express API.
 // Set VITE_API_URL in a .env file, e.g. VITE_API_URL=https://your-api.onrender.com/api
-const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
+export const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
+console.log(import.meta.env.VITE_API_URL);
 
-const TOKEN_KEY = "turfarena_admin_token";
+const TOKEN_KEY = "admin_token";
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);

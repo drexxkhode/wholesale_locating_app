@@ -16,7 +16,7 @@ function normalizeUser(payload) {
     email: source.email ?? "",
     phone: source.phone ?? "",
     role: source.role,
-    photo: source.photo ?? null,
+    photo: source.photo ?? source.avatar ?? source.profile_photo ?? source.image ?? source.image_url ?? source.imageUrl ?? null,
     // A super_admin has no company_id by design.
     companyId: source.company_id ?? source.companyId ?? null,
   };
@@ -27,6 +27,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Remove session keys used by earlier mock/API implementations. The live
+    // application stores exactly one JWT: `admin_token`.
+    localStorage.removeItem("turfarena_admin_token");
+    localStorage.removeItem("turfarena_admin_user");
+
     if (!getToken()) {
       setLoading(false);
       return;
@@ -55,12 +60,19 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setToken(null);
+    localStorage.removeItem("admin_user");
+    localStorage.removeItem("turfarena_admin_token");
     localStorage.removeItem("turfarena_admin_user");
     setUser(null);
   };
 
+  const updateCurrentUser = (payload) => {
+    const currentUser = normalizeUser(payload);
+    if (currentUser) setUser(currentUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isSuperAdmin: user?.role === "super_admin" }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateCurrentUser, isSuperAdmin: user?.role === "super_admin" }}>
       {children}
     </AuthContext.Provider>
   );

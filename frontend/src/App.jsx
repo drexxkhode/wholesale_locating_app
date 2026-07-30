@@ -13,6 +13,8 @@ import MapManage from "./pages/MapManage";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import CompanyUsers from "./pages/CompanyUsers";
+import CompanySettings from "./pages/CompanySettings";
 
 function MyWarehouseRedirect() {
   const { user } = useAuth();
@@ -44,12 +46,14 @@ export default function App() {
           <Route path="/companies/:id" element={<ProtectedRoute roles={["super_admin"]}><CompanyView /></ProtectedRoute>} />
           {/* Edit is shared: a company account may only edit its own id (enforced inside CompanyForm) */}
           <Route path="/companies/:id/edit" element={<CompanyForm />} />
+          <Route path="/companies/:id/users" element={<CompanyUsers />} />
 
           <Route path="/categories" element={<ProtectedRoute roles={["super_admin"]}><Categories /></ProtectedRoute>} />
           <Route path="/map" element={<MapManage />} />
           <Route path="/reports" element={<ProtectedRoute roles={["super_admin"]}><Reports /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute roles={["super_admin"]}><Users /></ProtectedRoute>} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings"  element={<Settings />} />
+          <Route path="/companies/:id/settings" element={<CompanySettings />} />
           <Route path="*" element={<Dashboard />} />
         </Route>
       </Routes>

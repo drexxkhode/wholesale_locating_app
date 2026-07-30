@@ -1,25 +1,45 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Topbar from "../components/Topbar";
-import StatusBadge from "../components/StatusBadge";
 import TableToolbar from "../components/TableToolbar";
+import Avatar from "../components/Avatar";
 import { useSidebar } from "../context/SidebarContext";
-import { users as seedUsers } from "../data/users";
+import { api } from "../api/client";
 
-export default function Users() {
+export default function CompanyUsers() {
   const { openSidebar } = useSidebar();
-  const [users] = useState(seedUsers);
+  const [users, setUsers] = useState([]); // Replace with actual data fetching logic
   const [q, setQ] = useState("");
+  const [message, setMessage] = useState("");
+
+  const fetchAdmins = async () => {
+    try {
+     const admins = await api.get("/api/auth/company-admins");
+      setUsers(Array.isArray(admins) ? admins : []);
+    } catch (error) {
+      setMessage(error.response?.data?.message || error.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
 
   const filtered = useMemo(
-    () => users.filter((u) => !q || u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase())),
-    [users, q]
+    () =>
+      users.filter(
+        (u) =>
+          !q ||
+          u.name?.toLowerCase().includes(q.toLowerCase()) ||
+          u.email?.toLowerCase().includes(q.toLowerCase()),
+      ),
+    [users, q],
   );
 
   return (
     <>
       <Topbar
         title="Users"
-        subtitle="Manage admin, staff, and warehouse accounts."
+        subtitle="Manage user accounts."
         onMenuClick={openSidebar}
       />
 
@@ -32,6 +52,15 @@ export default function Users() {
             addLabel="Add User"
             onAdd={() => {}}
           />
+          {message && <p
+            className={`mt-3 mb-0 ${
+              message.toLowerCase().includes("success")
+                ? "text-success"
+                : "text-danger"
+            }`}
+          >
+            {message}
+          </p>}
           <div className="table-responsive">
             <table className="table admin-table mb-0">
               <thead>
@@ -41,7 +70,7 @@ export default function Users() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Last Login</th>
-                  <th>Status</th>
+                  <th>Created At</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -50,19 +79,37 @@ export default function Users() {
                   <tr key={u.id}>
                     <td className="text-muted-brand">{i + 1}</td>
                     <td className="d-flex align-items-center gap-2 fw-medium">
-                      <span className="icon-circle bg-primary-brand text-white" style={{ width: 30, height: 30, fontSize: "0.75rem" }}>
-                        {u.name.split(" ").map((n) => n[0]).join("")}
-                      </span>
+                      <Avatar name={u.name} photo={u.photo ?? u.avatar ?? u.profile_photo ?? u.image ?? u.image_url ?? u.imageUrl} size={30} />
                       {u.name}
                     </td>
                     <td className="text-muted-brand">{u.email}</td>
                     <td className="text-muted-brand">{u.role}</td>
-                    <td className="text-muted-brand">{u.lastLogin}</td>
-                    <td><StatusBadge status={u.status} /></td>
+                    <td className="text-muted-brand">
+                      {u.last_login
+                        ? new Date(u.last_login).toLocaleString()
+                        : "Never"}
+                    </td>
+
+                    <td className="text-muted-brand">
+                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
+                    </td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
-                        <button className="btn btn-sm border-0 p-1" title="Edit"><i className="bi bi-pencil text-primary-brand" /></button>
-                        <button className="btn btn-sm border-0 p-1" title="Delete"><i className="bi bi-trash" style={{ color: "var(--color-danger)" }} /></button>
+                        <button
+                          className="btn btn-sm border-0 p-1"
+                          title="Edit"
+                        >
+                          <i className="bi bi-pencil text-primary-brand" />
+                        </button>
+                        <button
+                          className="btn btn-sm border-0 p-1"
+                          title="Delete"
+                        >
+                          <i
+                            className="bi bi-trash"
+                            style={{ color: "var(--color-danger)" }}
+                          />
+                        </button>
                       </div>
                     </td>
                   </tr>

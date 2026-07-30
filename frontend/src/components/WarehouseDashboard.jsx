@@ -7,6 +7,7 @@ import AdminMap from "../components/AdminMap";
 import { useSidebar } from "../context/SidebarContext";
 import { companies, TOTAL_COMPANIES } from "../data/companies";
 import { categories } from "../data/categories";
+import { useAuth } from "../context/AuthContext";
 
 export default function WarehouseDashboard() {
   const { openSidebar } = useSidebar();
@@ -16,10 +17,11 @@ export default function WarehouseDashboard() {
 
   const chartData = categories.map((c) => ({ name: c.name, value: c.companies, color: c.color }));
   const totalCatCompanies = chartData.reduce((s, d) => s + d.value, 0);
+  const { user } = useAuth();
 
   return (
     <>
-      <Topbar title="Dashboard" subtitle="Welcome back, Admin! Here's what's happening with the system." onMenuClick={openSidebar} />
+      <Topbar title="Dashboard" subtitle={`Welcome back, ${user?.name}! `} onMenuClick={openSidebar} />
 
       <div className="p-3 p-lg-4">
         <div className="row g-3 mb-4">

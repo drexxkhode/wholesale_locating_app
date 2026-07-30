@@ -17,7 +17,7 @@ export default function CompanyForm() {
   const fileInputRef = useRef(null);
 
   // A "company" account may only ever edit its own linked company record.
-  const isOwnCompany = user?.role === "super_admin" || (user?.role === "company" && String(user.companyId) === String(id));
+  const isOwnCompany = user?.role === "super_admin" || (user?.role === "warehouse_manager" || user?.role === "warehouse_user") && String(user.companyId) === String(id);
 
   useEffect(() => {
     if (isEdit && user && !isOwnCompany) {

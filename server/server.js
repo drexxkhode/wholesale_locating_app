@@ -6,7 +6,7 @@ const path = require("path");
 const db = require("./config/db");
 
 const companyImageRoute = require('./routes/imageRoute');
-const authRoute = require('./routes/authRoute');
+const adminRoute = require('./routes/adminRoute');
 
 const app = express();
 
@@ -32,7 +32,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/images", express.static(path.join(__dirname, "images")));
 
 // Routes
-app.use("/api/auth", authRoute);
+app.use("/api/auth", adminRoute);
 //app.use("/api/turf", turfRoutes);
 //app.use("/api/turf", meilisearchRoutes);
 //app.use("/api/map", mapRoutes);

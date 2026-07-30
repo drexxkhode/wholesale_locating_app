@@ -9,7 +9,9 @@ const Dashboard = () => {
         case "super_admin":
             return <AdminDashboard />;
 
-        case "company":
+        case "warehouse_manager":
+            return <WarehouseDashboard />;
+             case "warehouse_user":
             return <WarehouseDashboard />;
 
         default:

@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import logo from "../assets/logo.png";
 
 const superAdminLinks = [
   { to: "/", label: "Dashboard", icon: "bi-speedometer2", end: true },
@@ -16,14 +17,17 @@ const superAdminLinks = [
 const companyLinks = [
   { to: "/", label: "Dashboard", icon: "bi-speedometer2", end: true },
   { to: "/my-company", label: "My Warehouse", icon: "bi-shop", end: false },
-  { to: "/map", label: "Map", icon: "bi-map-fill", end: false },
-  { to: "/settings", label: "Settings", icon: "bi-gear-fill", end: false },
+  { to: "/companies/:id/users", label: "Users", icon: "bi-people-fill", end: false },
+  { to: "/companies/:id/settings", label: "Settings", icon: "bi-gear-fill", end: false },
 ];
 
 export default function Sidebar({ open, onClose, collapsed, onToggleCollapsed }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const links = user?.role === "company" ? companyLinks : superAdminLinks;
+  const isCompanyUser = user?.role === "warehouse_manager" || user?.role === "warehouse_user";
+  const links = isCompanyUser
+    ? companyLinks.map((link) => ({ ...link, to: link.to.replace(":id", user.companyId) }))
+    : superAdminLinks;
 
   const handleLogout = () => {
     logout();
@@ -41,13 +45,13 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapsed })
       )}
       <aside className={`admin-sidebar ${open ? "open" : ""} ${collapsed ? "collapsed" : ""}`}>
         <div className="d-flex align-items-center gap-2 px-3 py-4 sidebar-brand-row">
-          <span className="icon-circle bg-white flex-shrink-0" style={{ width: 38, height: 38, color: "var(--color-primary)" }}>
-            <i className="bi bi-geo-alt-fill fs-5" />
+          <span className="sidebar-logo-wrap flex-shrink-0">
+            <img src={logo} alt="North Industrial Area Wholesale Locator" className="sidebar-logo" />
           </span>
           <div className="d-flex flex-column lh-1 sidebar-label">
             <span className="fw-bold text-white" style={{ fontSize: "0.85rem" }}>NORTH INDUSTRIAL AREA</span>
             <span style={{ fontSize: "0.68rem", color: "var(--sidebar-text)" }}>
-              {user?.role === "company" ? "Wholesale Locator · Company" : "Wholesale Locator · Administrator"}
+              {user?.role === "warehouse_manager" || user?.role === "warehouse_user" ? "Wholesale Locator · Company" : "Wholesale Locator · Administrator"}
             </span>
           </div>
         </div>

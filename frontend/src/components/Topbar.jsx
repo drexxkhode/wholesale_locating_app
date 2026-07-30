@@ -1,15 +1,13 @@
 import { useAuth } from "../context/AuthContext";
+import Avatar from "./Avatar";
 
 export default function Topbar({ title, subtitle, onMenuClick, actions = null }) {
   const { user } = useAuth();
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  const initials = (user?.name || "A")
-    .split(" ")
-    .map((name) => name[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  const roleLabel = user?.role === "company" ? "Warehouse Account" : "Super Administrator";
+  const displayedPhoto = user?.photo ?? user?.avatar ?? user?.profile_photo ?? user?.image ?? user?.image_url ?? user?.imageUrl;
+  const roleLabel = ["company", "warehouse_manager", "warehouse_user"].includes(user?.role)
+    ? "Warehouse Account"
+    : "Super Administrator";
 
   return (
     <header className="admin-topbar">
@@ -34,7 +32,7 @@ export default function Topbar({ title, subtitle, onMenuClick, actions = null })
           <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill" style={{ background: "var(--color-danger)", fontSize: "0.6rem" }}>1</span>
         </button>
         <div className="d-none d-sm-flex align-items-center gap-2">
-          <span className="icon-circle bg-primary-brand text-white flex-shrink-0" aria-hidden="true" style={{ width: 38, height: 38, fontSize: "0.8rem" }}>{initials}</span>
+          <Avatar name={user?.name || "Admin"} photo={displayedPhoto} size={38} className="flex-shrink-0" />
           <div className="d-none d-md-flex flex-column lh-1">
             <span className="fw-semibold text-truncate" style={{ fontSize: "0.85rem", maxWidth: 140 }}>{user?.name || "Admin"}</span>
             <span className="text-muted-brand" style={{ fontSize: "0.72rem" }}>{roleLabel}</span>
