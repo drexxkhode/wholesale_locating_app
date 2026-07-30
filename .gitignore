@@ -18,8 +18,9 @@ logs
 *.log
 
 # build
-dist/
+frontend/dist/
 build/
+turfarena-gis-admin/
 
 # OS
 .DS_Store

@@ -50,7 +50,7 @@ export default function DesktopNavbar() {
           ))}
         </div>
 
-        <button className="btn btn-brand px-3 py-2"><i className="bi bi-person" ></i></button>
+        <button className="btn btn-brand rounded-2 px-3 py-2">Login / Register</button>
       </div>
     </nav>
   );

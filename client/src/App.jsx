@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
+import ScrollToTop from "./components/ScrollToTop";
 import Home from "./pages/Home";
 import SearchResults from "./pages/SearchResults";
 import CompanyDetail from "./pages/CompanyDetail";
@@ -13,7 +14,9 @@ import Contact from "./pages/Contact";
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/companies" element={<SearchResults />} />
@@ -27,6 +30,7 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<Home />} />
       </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 }

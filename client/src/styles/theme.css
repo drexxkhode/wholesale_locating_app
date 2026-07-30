@@ -1,6 +1,5 @@
 :root {
   --color-primary: #1c6b41;
-  --color-: #18c56f;
   --color-primary-dark: #123c26;
   --color-primary-darker: #0e2e1c;
   --color-primary-light: #e8f5ec;
@@ -82,10 +81,15 @@ h1, h2, h3, .font-display {
 
 /* ---------- Buttons ---------- */
 .btn {
-  transition: transform 0.12s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
-.btn:active {
-  transform: translateY(1px);
+@media (hover: hover) and (pointer: fine) {
+  .btn {
+    transition: transform 0.12s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn:active {
+    transform: translateY(1px);
+  }
 }
 
 .btn-brand {
@@ -161,12 +165,23 @@ h1, h2, h3, .font-display {
 }
 
 .hover-lift {
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
-.hover-lift:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-border-strong);
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift {
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border-strong);
+  }
+}
+@media (hover: none) {
+  .hover-lift:active {
+    box-shadow: var(--shadow-xs);
+    background-color: var(--color-primary-soft);
+  }
 }
 
 .focus-ring:focus-visible {
@@ -207,4 +222,13 @@ h1, h2, h3, .font-display {
 }
 .leaflet-container {
   font-family: "Inter", sans-serif !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

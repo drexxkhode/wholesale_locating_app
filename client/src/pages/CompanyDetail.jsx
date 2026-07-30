@@ -6,7 +6,8 @@ import CompanyMap from "../components/CompanyMap";
 import { getCompany, getNearby } from "../data/companies";
 import { getCategory } from "../data/categories";
 import { useFavorites } from "../context/FavoritesContext";
-import { companyImageUrl } from "../utils/image";
+import { companyImageUrl, companyGalleryUrls } from "../utils/image";
+import ImageCarousel from "../components/ImageCarousel";
 
 export default function CompanyDetail() {
   const { id } = useParams();
@@ -70,12 +71,9 @@ export default function CompanyDetail() {
 
         <div className="row g-4">
           <div className="col-lg-8">
-            <img
-              src={companyImageUrl(company, 1000, 500)}
-              alt={company.name}
-              loading="lazy"
-              className="w-100 rounded-0 rounded-lg-4"
-              style={{ height: 260, objectFit: "cover" }}
+            <ImageCarousel
+              images={companyGalleryUrls(company, 4, 1000, 500)}
+              height={260}
             />
 
             <div className="px-3 px-lg-0 pt-3">

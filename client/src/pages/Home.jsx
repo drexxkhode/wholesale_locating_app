@@ -26,9 +26,12 @@ export default function Home() {
 
       {/* ---------- MOBILE HERO ---------- */}
       <section
-        className="d-lg-none px-3 pt-4 pb-4 text-white"
+        className="d-lg-none px-3 pt-4 pb-4 text-white position-relative"
         style={{
-          background: "linear-gradient(135deg, var(--color-primary-dark), var(--color-primary))",
+          backgroundImage:
+            "linear-gradient(135deg, rgba(14,46,28,0.82), rgba(28,107,65,0.72)), url(https://images.unsplash.com/photo-1494412651409-8963ce7935a7?auto=format&fit=crop&w=900&q=60)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
           borderBottomLeftRadius: 24,
           borderBottomRightRadius: 24,
         }}

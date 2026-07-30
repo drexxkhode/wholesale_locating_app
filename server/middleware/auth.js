@@ -10,7 +10,9 @@ const protect = (req, res, next) => {
   try {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    // This contains the verified JWT claims for the current request.
+    // Keep it neutral because the same middleware is used by admin and user routes.
+    req.auth = decoded;
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid token" });

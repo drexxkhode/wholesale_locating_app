@@ -1,122 +1,58 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { Navigate, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
+import ScrollToTop from "./components/ScrollToTop";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { useAuth } from "./context/AuthContext";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Companies from "./pages/Companies";
+import CompanyForm from "./pages/CompanyForm";
+import CompanyView from "./pages/CompanyView";
+import Categories from "./pages/Categories";
+import MapManage from "./pages/MapManage";
+import Reports from "./pages/Reports";
+import Users from "./pages/Users";
+import Settings from "./pages/Settings";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function MyWarehouseRedirect() {
+  const { user } = useAuth();
+  if (!user?.companyId) return <Navigate to="/" replace />;
+  return <Navigate to={`/companies/${user.companyId}/edit`} replace />;
 }
 
-export default App
+export default function App() {
+  return (
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
+
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/my-company" element={<MyWarehouseRedirect />} />
+
+          {/* Full company directory: super admin only */}
+          <Route path="/companies" element={<ProtectedRoute roles={["super_admin"]}><Companies /></ProtectedRoute>} />
+          <Route path="/companies/new" element={<ProtectedRoute roles={["super_admin"]}><CompanyForm /></ProtectedRoute>} />
+          <Route path="/companies/:id" element={<ProtectedRoute roles={["super_admin"]}><CompanyView /></ProtectedRoute>} />
+          {/* Edit is shared: a company account may only edit its own id (enforced inside CompanyForm) */}
+          <Route path="/companies/:id/edit" element={<CompanyForm />} />
+
+          <Route path="/categories" element={<ProtectedRoute roles={["super_admin"]}><Categories /></ProtectedRoute>} />
+          <Route path="/map" element={<MapManage />} />
+          <Route path="/reports" element={<ProtectedRoute roles={["super_admin"]}><Reports /></ProtectedRoute>} />
+          <Route path="/users" element={<ProtectedRoute roles={["super_admin"]}><Users /></ProtectedRoute>} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Dashboard />} />
+        </Route>
+      </Routes>
+    </>
+  );
+}

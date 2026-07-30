@@ -22,8 +22,8 @@ const upload = multer({
 });
 
 // ── Upload a Buffer to Cloudinary ─────────────────────────────────────────
-// folder   — e.g. 'turfarena/turfs' or 'turfarena/profiles'
-// publicId — e.g. 'turf_1_abc123' (pass null to let Cloudinary auto-generate)
+// folder   — e.g. 'gis_system/company' or 'gis_system/profiles'
+// publicId — e.g. 'company_1_abc123' (pass null to let Cloudinary auto-generate)
 const uploadToCloudinary = (buffer, folder, publicId = null) => {
   return new Promise((resolve, reject) => {
     const options = {
