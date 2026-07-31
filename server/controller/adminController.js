@@ -133,6 +133,40 @@ LIMIT 1`, [email,email,email]);
   }
 };
 
+/* ================= CHANGE PASSWORD ======================================= */
+exports.changePassword = async (req, res) => {
+  try {
+    const adminId = req?.auth?.id;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ message: "All fields are required" });
+
+    const [rows] = await db.execute(
+      "SELECT password FROM users WHERE id = ?", [adminId]
+    );
+
+    if (!rows.length)
+      return res.status(404).json({ message: "We couldn't find an account associated with this user." });
+
+    const isMatch = await bcrypt.compare(currentPassword, rows[0].password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Old password is incorrect" });
+
+    const isSame = await bcrypt.compare(newPassword, rows[0].password);
+    if (isSame)
+      return res.status(400).json({ message: "New password cannot be same as old password" });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await db.execute("UPDATE users SET password = ? WHERE id = ?", [hashed, adminId]);
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server Error ⚠️" });
+  }
+};
+
+
 /* ================= UPDATE ADMIN ============================================
    Handles text fields + optional photo in one FormData request.
    Route: PUT /api/auth/update/:id  (upload.single('photo') middleware)       */
@@ -359,26 +393,26 @@ exports.getAllCompanyAdmins = async (req, res) => {
 /* ================= GET ALL COMPANIES (SUPER ADMIN) ======================================== */
 exports.getAllCompanies = async (req, res) => {
   try {
-    const admin_role = req.auth?.role ==="super_admin";
-    if (!admin_role) return res.status(401).json({ message: 'Unauthorized' });
+    const admin_role = req.auth?.role === "super_admin";
+    if (!admin_role) return res.status(401).json({ message: "Unauthorized" });
 
     const [rows] = await db.query(
       `SELECT c.id, c.company_name, c.phone,
-              c.email,c.address, c.latitude,c.longitude,c.description, c.status,  c.created_at,
-              g.category_name AS name, g.id AS cat_id,
+              c.email, c.address, c.latitude, c.longitude, c.description, c.status, c.created_at,
+              g.category_name AS category_name, g.id AS cat_id,
               (
                 SELECT COUNT(*) FROM products
                 WHERE company_id = c.id
               ) AS total_products
        FROM companies c
-       LEFT JOIN categories g ON c.id = g.id
+       LEFT JOIN categories g ON c.category_id = g.id
        ORDER BY c.created_at DESC`
     );
 
     return res.json(rows);
   } catch (err) {
-    console.error('getCompanies error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    console.error("getCompanies error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 /* ================= GET MY COMPANY DETAILS (COMPANY ADMIN) ======================================== */
@@ -502,31 +536,17 @@ exports.getCompanyName = async (req, res) => {
 exports.getDashboardDetails = async (req, res) => {
   try {
     const superId = req.auth?.id;
-    if (!superId) return res.status(403).json({ message: 'Admin access required' });
-    const cacheKey = redis.KEYS.dashboardAll;
+    if (!superId) return res.status(403).json({ message: "Admin access required" });
 
-    // ── Cache check ───────────────────────────────────────────────────────
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      console.log(`[cache] HIT dashboard:super_admin`);
-      return res.json(cached);
-    }
-
-    const [rows] = await db.execute(
-  `SELECT 
-    (SELECT COUNT(*) FROM users ) AS total_users,
-    (SELECT COUNT(*) FROM company ) AS total_companies,
-    (SELECT COUNT(*) FROM products ) AS total_products,
-    (SELECT COUNT(*) FROM categories  ) AS total_categories,
-`
-);
+    const [rows] = await db.query(
+      `SELECT 
+        (SELECT COUNT(*) FROM users) AS total_users,
+        (SELECT COUNT(*) FROM companies) AS total_companies,
+        (SELECT COUNT(*) FROM products) AS total_products,
+        (SELECT COUNT(*) FROM categories) AS total_categories`
+    );
 
     const payload = rows[0];
-
-    // ── Cache store ───────────────────────────────────────────────────────
-    await redis.set(cacheKey, payload, redis.TTL.dashboardAll);
-    console.log(`[cache] MISS dashboard:super_admin — cached`);
-
     res.json(payload);
   } catch (err) {
     console.error(err);

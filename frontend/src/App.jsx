@@ -51,7 +51,7 @@ export default function App() {
           <Route path="/company/products/:id" element={<ProtectedRoute><CompanyProducts /></ProtectedRoute>} />
 
           <Route path="/categories" element={<ProtectedRoute roles={["super_admin"]}><Categories /></ProtectedRoute>} />
-          <Route path="/map" element={<MapManage />} />
+          <Route path="/map" element={<ProtectedRoute roles={["super_admin"]}><MapManage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute roles={["super_admin"]}><Reports /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute roles={["super_admin"]}><Users /></ProtectedRoute>} />
           <Route path="/settings"  element={<Settings />} />

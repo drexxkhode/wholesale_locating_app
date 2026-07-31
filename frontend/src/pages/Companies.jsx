@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Topbar from "../components/Topbar";
 import StatusBadge from "../components/StatusBadge";
 import Pagination from "../components/Pagination";
 import TableToolbar from "../components/TableToolbar";
 import { useSidebar } from "../context/SidebarContext";
-import { companies } from "../data/companies";
-import { categories } from "../data/categories";
+import { api } from "../api/client";
+import { categories as seedCategories } from "../data/categories";
 
 const PAGE_SIZE = 8;
 
@@ -18,7 +18,45 @@ export default function Companies() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const [localCompanies, setLocalCompanies] = useState(companies);
+  const [localCompanies, setLocalCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        setLoading(true);
+        const rows = await api.get("/api/auth/companies");
+        const normalized = Array.isArray(rows)
+          ? rows.map((company) => {
+              const seed = seedCategories.find((item) => item.name === company.category_name || item.slug === company.category_name || String(item.id) === String(company.cat_id));
+              const categorySlug = seed?.slug || (company.category_name || "others").toLowerCase().replace(/\s+/g, "-");
+              return {
+                id: company.id,
+                name: company.company_name || company.name,
+                category: categorySlug,
+                phone: company.phone || "",
+                lat: Number(company.latitude || 0),
+                lng: Number(company.longitude || 0),
+                address: company.address || "",
+                status: company.status || "Active",
+                addedOn: company.created_at || company.addedOn,
+                description: company.description || "",
+                email: company.email || "",
+                total_products: company.total_products || ""
+              };
+            })
+          : [];
+        setLocalCompanies(normalized);
+      } catch (error) {
+        setMessage(error.message || "Could not load companies.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCompanies();
+  }, []);
 
   const filtered = useMemo(() => {
     return localCompanies.filter((c) => {
@@ -59,7 +97,7 @@ export default function Companies() {
               <>
                 <select className="form-select" style={{ width: 160 }} value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }}>
                   <option value="all">All Categories</option>
-                  {categories.map((c) => (
+                  {seedCategories.map((c) => (
                     <option key={c.slug} value={c.slug}>{c.name}</option>
                   ))}
                 </select>
@@ -84,26 +122,30 @@ export default function Companies() {
                   <th>Company Name</th>
                   <th>Category</th>
                   <th>Phone</th>
-                  <th>Location</th>
+                  <th>Products</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {pageRows.length === 0 && (
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-muted-brand py-4">Loading companies...</td>
+                  </tr>
+                ) : pageRows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="text-center text-muted-brand py-4">No companies match your filters.</td>
                   </tr>
                 )}
                 {pageRows.map((c, i) => {
-                  const cat = categories.find((cc) => cc.slug === c.category);
+                  const cat = seedCategories.find((cc) => cc.slug === c.category);
                   return (
                     <tr key={c.id}>
                       <td className="text-muted-brand">{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
                       <td className="fw-medium">{c.name}</td>
                       <td style={{ color: cat?.color }}>{cat?.name}</td>
                       <td className="text-muted-brand">{c.phone}</td>
-                      <td className="text-muted-brand">{c.lat.toFixed(4)}, {c.lng.toFixed(4)}</td>
+                      <td className="text-muted-brand">{c.total_products}</td>
                       <td><StatusBadge status={c.status} /></td>
                       <td>
                         <div className="d-flex align-items-center gap-2">
@@ -127,7 +169,7 @@ export default function Companies() {
 
           <div className="d-flex align-items-center justify-content-between p-3 flex-wrap gap-2">
             <span className="text-muted-brand" style={{ fontSize: "0.85rem" }}>
-              {filtered.length
+              {loading ? "Loading companies..." : filtered.length
                 ? `Showing ${(currentPage - 1) * PAGE_SIZE + 1} to ${Math.min(currentPage * PAGE_SIZE, filtered.length)} of ${filtered.length} entries`
                 : "No companies to show"}
             </span>

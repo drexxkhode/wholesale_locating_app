@@ -258,8 +258,8 @@ export default function CompanyDetails() {
   return (
     <>
       <Topbar
-        title={isEdit ? "Edit Company" : "Add New Company"}
-        subtitle={isEdit ? "Update this company's details." : "Add a new wholesale company to the system."}
+        title={ "View/Edit Company " }
+        subtitle={ "View and edit this company's details."}
         onMenuClick={openSidebar}
       />
 

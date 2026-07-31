@@ -8,6 +8,8 @@ const db = require("./config/db");
 const companyImageRoute = require('./routes/imageRoute');
 const adminRoute = require('./routes/adminRoute');
 const companyRoute = require("./routes/companyRoute");
+const mapRoute = require("./routes/mapRoute");
+const systemRoute = require("./routes/systemRoute");
 
 const app = express();
 
@@ -34,19 +36,11 @@ app.use("/images", express.static(path.join(__dirname, "images")));
 
 // Routes
 app.use("/api/auth", adminRoute);
-//app.use("/api/turf", turfRoutes);
-//app.use("/api/turf", meilisearchRoutes);
-//app.use("/api/map", mapRoutes);
-//app.use("/api/users", userRoutes);
-//app.use('/api/bookings', bookingRoute);
-//app.use('/api/slots', timeslotRoute);      
-//app.use('/api/admin', bookingsRoute);  
+  
+app.use('/api/system', systemRoute);  
 app.use('/api/company', companyRoute); 
 app.use('/api/company/:id/images', companyImageRoute); 
-//app.use('/api/enquiries', enquiriesRoute);
-//app.use('/api/reviews', reviewRoute);
-//app.use('/api/payments', paymentsRoute);
-//app.use('/api/super', superAdminRoute);
+app.use('/api/map', mapRoute);
 
 app.get("/", (req, res) => {
   res.send("North Industrial Area GIS Locator API running");

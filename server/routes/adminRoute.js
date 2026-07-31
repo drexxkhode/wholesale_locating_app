@@ -10,6 +10,7 @@ const {
   getAllAdmins,
   updateUser,
   deleteAdminPhoto,
+  changePassword
 } = require("../controller/adminController");
 const protect = require("../middleware/auth");
 //const passwordResetRateLimit  = require("../../middleware/passwordResetRateLimit");
@@ -31,11 +32,12 @@ router.get("/company-admins", protect, getAllCompanyAdmins);
 router.put("/update/:id", protect, upload.single("photo"), updateUser);
 router.delete("/admins/:id/photo", protect, deleteAdminPhoto);
 router.get("/mycompany/:company_id", protect,  getMyCompanyDetails)
+router.put("/change-password/:id", protect, changePassword);
 
 /*router.post("/register",protect, upload.single('photo'), register);
 router.delete("/delete/:id", protect, deleteUser); 
 router.get("/details/:id", protect, getAdminDetails);
-router.put("/change-password", protect, changePassword);
+
 router.post("/forgot-password", passwordResetRateLimit , forgotPassword);
 router.post("/reset-password", resetPassword);
 router.delete('/:id/photo', protect,                         deleteAdminPhoto);*/

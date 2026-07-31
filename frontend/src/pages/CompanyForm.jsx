@@ -362,12 +362,7 @@ export default function CompanyForm() {
                 </div>
                 <div>
                   <label className="form-label">Products / Services</label>
-                  <div className="input-group">
-                    <input className="form-control" placeholder="Enter products or services (comma separated)" value={form.products} onChange={update("products")} disabled={!editableFields.products} />
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("products")} title="Edit field">
-                      <i className="bi bi-pencil" />
-                    </button>
-                  </div>
+                  
                   <div className="d-flex flex-wrap gap-2 mt-3">
                     {productList.length > 0 ? (
                       productList.map((product) => (

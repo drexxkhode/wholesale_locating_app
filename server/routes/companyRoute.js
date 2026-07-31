@@ -23,9 +23,11 @@ const {
   addProduct,
   updateProduct,
   deleteProduct,
-  getProducts
+  getProducts,
+  getCategories
 } = require("../controller/companyController");
 
+router.get("/categories", protect, getCategories);
 router.post("/categories", protect, addCategory);
 router.put("/categories/:id", protect, updateCategory);
 router.delete("/categories/:id", protect, deleteCategory);
