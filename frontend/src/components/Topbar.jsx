@@ -1,14 +1,16 @@
 import { useAuth } from "../context/AuthContext";
 import Avatar from "./Avatar";
+import { useEffect, useState } from "react";
 
 export default function Topbar({ title, subtitle, onMenuClick, actions = null }) {
   const { user } = useAuth();
+  const [companyName, setCompanyName] = useState("");
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const displayedPhoto = user?.photo ?? user?.avatar ?? user?.profile_photo ?? user?.image ?? user?.image_url ?? user?.imageUrl;
-  const roleLabel = ["company", "warehouse_manager", "warehouse_user"].includes(user?.role)
+  const roleLabel = ["warehouse_manager", "warehouse_user"].includes(user?.role)
     ? "Warehouse Account"
     : "Super Administrator";
-
+   
   return (
     <header className="admin-topbar">
       <div className="d-flex align-items-center gap-3 min-w-0">

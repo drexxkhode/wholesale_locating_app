@@ -7,4 +7,11 @@ export const categories = [
   { id: 6, slug: "others", name: "Others", icon: "bi-grid-fill", color: "#7a5cd6", bg: "#f0ecfd", companies: 3, status: "Active" },
 ];
 
-export const getCategory = (slug) => categories.find((c) => c.slug === slug) || categories[0];
+export const getCategory = (value) => {
+  if (!value && value !== 0) return categories[0];
+
+  const normalized = String(value).trim().toLowerCase();
+  return categories.find((c) => c.slug === normalized || String(c.id) === normalized || c.name.toLowerCase() === normalized || c.slug.replace(/-/g, " ") === normalized) || categories[0];
+};
+
+export const getCategoryValue = (value) => getCategory(value)?.slug || "";

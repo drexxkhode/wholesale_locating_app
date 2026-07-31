@@ -8,6 +8,8 @@ import { useSidebar } from "../context/SidebarContext";
 import { companies, TOTAL_COMPANIES } from "../data/companies";
 import { categories } from "../data/categories";
 import { useAuth } from "../context/AuthContext";
+import { useEffect, useState } from "react";
+import { api } from "../api/client";
 
 export default function WarehouseDashboard() {
   const { openSidebar } = useSidebar();
@@ -18,10 +20,27 @@ export default function WarehouseDashboard() {
   const chartData = categories.map((c) => ({ name: c.name, value: c.companies, color: c.color }));
   const totalCatCompanies = chartData.reduce((s, d) => s + d.value, 0);
   const { user } = useAuth();
+  const [companyName, setCompanyName] = useState("");
+  const [message, setMessage] = useState("");
+  const isAdmin = user?.role === "super_admin";
+
+  const getCompanyName = async () => {
+    try {
+      const response = await api.get("/api/auth/company-name");
+      setCompanyName(response.company_name);
+    } catch (error) {
+      console.error("Error fetching company name:", error);
+    } 
+  }
+    useEffect(() => {
+      if (!isAdmin) {
+        getCompanyName();
+      }
+    }, [isAdmin]);
 
   return (
     <>
-      <Topbar title="Dashboard" subtitle={`Welcome back, ${user?.name}! `} onMenuClick={openSidebar} />
+      <Topbar title="Dashboard" subtitle={isAdmin ? " Wholesale Locator Platform" : ` ${companyName}`} onMenuClick={openSidebar} />
 
       <div className="p-3 p-lg-4">
         <div className="row g-3 mb-4">

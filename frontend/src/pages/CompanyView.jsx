@@ -1,19 +1,58 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Topbar from "../components/Topbar";
 import StatusBadge from "../components/StatusBadge";
 import AdminMap from "../components/AdminMap";
 import { useSidebar } from "../context/SidebarContext";
-import { getCompanyById } from "../data/companies";
+import { api } from "../api/client";
 import { getCategory } from "../data/categories";
-import { useState } from "react";
 
 export default function CompanyView() {
   const { openSidebar } = useSidebar();
   const navigate = useNavigate();
   const { id } = useParams();
-  const company = getCompanyById(id);
-  const images = company?.images || [];
+  const [company, setCompany] = useState(null);
+  const [images, setImages] = useState([]);
   const [activeImage, setActiveImage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+    setLoading(true);
+
+    Promise.all([
+      api.get(`/api/auth/mycompany/${id}`),
+      api.get(`/api/company/${id}/images`),
+    ])
+      .then(([companyData, imageResponse]) => {
+        if (ignore) return;
+        setCompany(companyData || null);
+        setImages(Array.isArray(imageResponse?.images) ? imageResponse.images : []);
+        setActiveImage(0);
+      })
+      .catch((error) => {
+        if (!ignore) setMessage(error.message || "Could not load company details.");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <>
+        <Topbar title="Loading company" onMenuClick={openSidebar} />
+        <div className="p-4 text-center text-muted-brand">
+          <i className="bi bi-arrow-repeat me-2" />Loading company details...
+        </div>
+      </>
+    );
+  }
 
   if (!company) {
     return (
@@ -27,12 +66,12 @@ export default function CompanyView() {
     );
   }
 
-  const cat = getCategory(company.category);
+  const cat = getCategory(company.category || company.cat_id || company.category_name);
 
   return (
     <>
       <Topbar
-        title={company.name}
+        title={company.company_name || company.name}
         subtitle="Company details"
         onMenuClick={openSidebar}
         actions={
@@ -48,17 +87,13 @@ export default function CompanyView() {
             <div className="card-surface p-0 overflow-hidden mb-3">
               {images.length > 0 ? (
                 <>
-                  <img src={images[activeImage]} alt={company.name} className="w-100" style={{ height: 220, objectFit: "cover" }} />
+                  <img src={images[activeImage]?.url || images[activeImage]?.previewUrl} alt={company.company_name || company.name} className="w-100" style={{ height: 260, objectFit: "cover" }} />
                   {images.length > 1 && (
                     <div className="d-flex gap-2 p-2" style={{ background: "var(--color-bg)", overflowX: "auto" }}>
-                      {images.map((src, i) => (
-                        <img
-                          key={src + i}
-                          src={src}
-                          alt=""
-                          onClick={() => setActiveImage(i)}
-                          className={`image-gallery-thumb ${i === activeImage ? "active" : ""}`}
-                        />
+                      {images.map((image, i) => (
+                        <button key={image.id || `${image.url}-${i}`} type="button" className={`border-0 p-0 rounded-2 overflow-hidden ${i === activeImage ? "ring" : ""}`} style={{ width: 82, height: 58, flexShrink: 0 }} onClick={() => setActiveImage(i)}>
+                          <img src={image.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        </button>
                       ))}
                     </div>
                   )}
@@ -71,7 +106,7 @@ export default function CompanyView() {
               )}
               <div className="p-3 p-lg-4">
                 <div className="d-flex align-items-center gap-2 mb-2">
-                  <h2 className="fw-bold mb-0 font-display" style={{ fontSize: "1.3rem" }}>{company.name}</h2>
+                  <h2 className="fw-bold mb-0 font-display" style={{ fontSize: "1.3rem" }}>{company.company_name || company.name}</h2>
                   <StatusBadge status={company.status} />
                 </div>
                 <span className="fw-medium" style={{ color: cat.color, fontSize: "0.88rem" }}>{cat.name}</span>
@@ -80,7 +115,7 @@ export default function CompanyView() {
                   <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-telephone" /> {company.phone}</div>
                   <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-envelope" /> {company.email}</div>
                   <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-geo-alt" /> {company.address}</div>
-                  <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-calendar3" /> Added {new Date(company.addedOn).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</div>
+                  <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-calendar3" /> Added {company.created_at ? new Date(company.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—"}</div>
                 </div>
 
                 <p className="fw-semibold mt-4 mb-2">Description</p>
@@ -88,9 +123,13 @@ export default function CompanyView() {
 
                 <p className="fw-semibold mb-2">Products / Services</p>
                 <div className="d-flex flex-wrap gap-2">
-                  {company.products.map((p) => (
-                    <span key={p} className="badge rounded-pill" style={{ background: cat.bg, color: cat.color, fontWeight: 500 }}>{p}</span>
-                  ))}
+                  {Array.isArray(company.products) && company.products.length > 0 ? (
+                    company.products.map((p) => (
+                      <span key={p.product_name || p.name || p} className="badge rounded-pill" style={{ background: cat.bg, color: cat.color, fontWeight: 500 }}>{p.product_name || p.name || p}</span>
+                    ))
+                  ) : (
+                    <span className="text-muted-brand">No products listed yet.</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -99,9 +138,9 @@ export default function CompanyView() {
           <div className="col-lg-5">
             <div className="card-surface p-3">
               <p className="fw-semibold mb-2">Location</p>
-              <AdminMap companies={[company]} center={[company.lat, company.lng]} zoom={15} height={280} />
+              <AdminMap companies={[{ ...company, lat: company.latitude, lng: company.longitude, name: company.company_name || company.name, category: company.category || company.category_name, status: company.status }]} center={[Number(company.latitude), Number(company.longitude)]} zoom={15} height={280} />
               <p className="text-muted-brand mt-2 mb-0" style={{ fontSize: "0.82rem" }}>
-                Lat {company.lat.toFixed(4)}, Lng {company.lng.toFixed(4)}
+                Lat {Number(company.latitude).toFixed(4)}, Lng {Number(company.longitude).toFixed(4)}
               </p>
             </div>
           </div>

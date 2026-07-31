@@ -19,7 +19,7 @@ import CompanySettings from "./pages/CompanySettings";
 function MyWarehouseRedirect() {
   const { user } = useAuth();
   if (!user?.companyId) return <Navigate to="/" replace />;
-  return <Navigate to={`/companies/${user.companyId}/edit`} replace />;
+  return <CompanyForm />;
 }
 
 export default function App() {

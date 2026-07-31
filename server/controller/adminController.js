@@ -102,7 +102,10 @@ LIMIT 1`, [email,email,email]);
         const match = await bcrypt.compare(password, admin.password);
         if (!match)
           return res.status(401).json({ message: "Invalid credentials" });
-
+       await db.query(
+   "UPDATE users SET last_login = NOW() WHERE id = ?",
+   [admin.id]
+    );
       const token = generateToken({
         id:      admin.id,
         role:    admin.role,
@@ -353,6 +356,99 @@ exports.getAllCompanyAdmins = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+/* ================= GET ALL COMPANIES (SUPER ADMIN) ======================================== */
+exports.getAllCompanies = async (req, res) => {
+  try {
+    const admin_role = req.auth?.role ==="super_admin";
+    if (!admin_role) return res.status(401).json({ message: 'Unauthorized' });
+
+    const [rows] = await db.query(
+      `SELECT c.id, c.company_name, c.phone,
+              c.email,c.address, c.latitude,c.longitude,c.description, c.status,  c.created_at,
+              g.category_name AS name, g.id AS cat_id,
+              (
+                SELECT COUNT(*) FROM products
+                WHERE company_id = c.id
+              ) AS total_products
+       FROM companies c
+       LEFT JOIN categories g ON c.id = g.id
+       ORDER BY c.created_at DESC`
+    );
+
+    return res.json(rows);
+  } catch (err) {
+    console.error('getCompanies error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+/* ================= GET MY COMPANY DETAILS (COMPANY ADMIN) ======================================== */
+exports.getMyCompanyDetails = async (req, res) => {
+  try {
+    const admin_id = req.auth?.id;
+    const company_id = req.params.company_id;
+    const userRole = req.auth?.role;
+    const userCompanyId = req.auth?.company_id;
+   
+    if (!admin_id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (userRole && !["super_admin", "warehouse_manager", "warehouse_user"].includes(userRole)) {
+      return res.status(403).json({ message: "Unauthorized role" });
+    }
+
+    if ((userRole === "warehouse_manager" || userRole === "warehouse_user") && String(userCompanyId) !== String(company_id)) {
+      return res.status(403).json({ message: "You can only view your own company" });
+    }
+
+    const [company] = await db.query(
+      `
+      SELECT
+        c.id,
+        c.company_name,
+        c.phone,
+        c.email,
+        c.address,
+        c.latitude,
+        c.longitude,
+        c.description,
+        c.status,
+        c.created_at,
+        g.id AS cat_id,
+        g.category_name
+      FROM companies c
+      LEFT JOIN categories g
+        ON c.category_id = g.id
+      WHERE c.id = ?
+      `,
+      [company_id]
+    );
+
+    if (!company.length) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    const [products] = await db.query(
+      `
+      SELECT
+        id,
+        product_name
+      FROM products
+      WHERE company_id = ?
+      ORDER BY product_name
+      `,
+      [company_id]
+    );
+
+    company[0].products = products;
+    company[0].total_products = products.length;
+    res.json(company[0]);
+  } catch (err) {
+    console.error("getMyCompanyDetails error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 // ================= GET ALL ADMINS (SUPER ADMIN) ======================================== */
 exports.getAllAdmins = async (req, res) => {
   try {
@@ -360,7 +456,7 @@ exports.getAllAdmins = async (req, res) => {
       return res.status(403).json({ message: "Super admin access required" });
     const [rows] = await db.query(
       `SELECT id, company_id, name,username, phone,
-              email, role, photo, created_at
+              email, role, photo, created_at, last_login
        FROM users WHERE role IN ('super_admin', 'warehouse_manager', 'warehouse_user','user')`
     );
     res.json(rows); // photos are already Cloudinary URLs or null
@@ -373,10 +469,9 @@ exports.getAllAdmins = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT id, company_id, name,username,
-              email,phone, role, photo, company_id
+      `SELECT id, company_id, name, username, email, phone, role, photo
        FROM users WHERE id = ?`,
-      [req.auth.id]
+      [req.auth?.id]
     );
     if (!rows.length)
       return res.status(404).json({ message: "Admin not found" });
@@ -387,12 +482,12 @@ exports.getMe = async (req, res) => {
   }
 };
 
-
+//================= GET COMPANY NAME =========================================
 exports.getCompanyName = async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, name FROM company WHERE id = ?",
-      [req.auth.company_id]
+      "SELECT id, company_name FROM companies WHERE id = ?",
+      [req.auth?.company_id]
     );
 
     if (!rows.length)
@@ -439,3 +534,4 @@ exports.getDashboardDetails = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
