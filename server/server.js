@@ -7,6 +7,7 @@ const db = require("./config/db");
 
 const companyImageRoute = require('./routes/imageRoute');
 const adminRoute = require('./routes/adminRoute');
+const companyRoute = require("./routes/companyRoute");
 
 const app = express();
 
@@ -40,7 +41,7 @@ app.use("/api/auth", adminRoute);
 //app.use('/api/bookings', bookingRoute);
 //app.use('/api/slots', timeslotRoute);      
 //app.use('/api/admin', bookingsRoute);  
-//app.use('/api/admin', dashbaordRoute); 
+app.use('/api/company', companyRoute); 
 app.use('/api/company/:id/images', companyImageRoute); 
 //app.use('/api/enquiries', enquiriesRoute);
 //app.use('/api/reviews', reviewRoute);

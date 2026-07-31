@@ -6,7 +6,6 @@ const generateToken = require("../config/jwt");
 const { uploadToCloudinary, deleteFromCloudinary } = require("../middleware/upload");
 
 const URL = process.env.REACT_APP_URL;
-/* ================= PASSWORD VALIDATION ================= */
 
 /* ================= HELPER: extract Cloudinary public_id from URL ========= */
 const extractPublicId = (url) => {

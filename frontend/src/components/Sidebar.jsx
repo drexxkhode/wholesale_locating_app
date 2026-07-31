@@ -17,8 +17,9 @@ const superAdminLinks = [
 const companyLinks = [
   { to: "/", label: "Dashboard", icon: "bi-speedometer2", end: true },
   { to: "/my-company", label: "My Warehouse", icon: "bi-shop", end: false },
-  { to: "/companies/:id/users", label: "Users", icon: "bi-people-fill", end: false },
-  { to: "/companies/:id/settings", label: "Settings", icon: "bi-gear-fill", end: false },
+  { to: "/company/products/:id", label: "Products", icon: "bi-box-seam", end: false },
+  { to: "/company/:id/users", label: "Users", icon: "bi-people-fill", end: false },
+  { to: "/company/:id/settings", label: "Settings", icon: "bi-gear-fill", end: false },
 ];
 
 export default function Sidebar({ open, onClose, collapsed, onToggleCollapsed }) {

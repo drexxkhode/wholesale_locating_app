@@ -75,7 +75,7 @@ export default function CompanyView() {
         subtitle="Company details"
         onMenuClick={openSidebar}
         actions={
-          <button className="btn btn-brand rounded-3 px-3" onClick={() => navigate(`/companies/${company.id}/edit`)}>
+          <button className="btn btn-brand rounded-3 px-3" onClick={() => navigate(`/company/${company.id}/edit`)}>
             <i className="bi bi-pencil me-2" /> Edit
           </button>
         }

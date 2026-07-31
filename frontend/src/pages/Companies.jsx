@@ -107,7 +107,7 @@ export default function Companies() {
                       <td><StatusBadge status={c.status} /></td>
                       <td>
                         <div className="d-flex align-items-center gap-2">
-                          <button className="btn btn-sm border-0 p-1" title="Edit" onClick={() => navigate(`/companies/${c.id}/edit`)}>
+                          <button className="btn btn-sm border-0 p-1" title="Edit" onClick={() => navigate(`/company/${c.id}/edit`)}>
                             <i className="bi bi-pencil text-primary-brand" />
                           </button>
                           <Link className="btn btn-sm border-0 p-1" to={`/companies/${c.id}`} title="View">

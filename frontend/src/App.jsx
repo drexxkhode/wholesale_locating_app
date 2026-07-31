@@ -15,11 +15,13 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import CompanyUsers from "./pages/CompanyUsers";
 import CompanySettings from "./pages/CompanySettings";
+import CompanyDetails from "./pages/CompanyDetails";
+import CompanyProducts from "./pages/CompanyProducts";
 
 function MyWarehouseRedirect() {
   const { user } = useAuth();
   if (!user?.companyId) return <Navigate to="/" replace />;
-  return <CompanyForm />;
+  return <CompanyDetails />;
 }
 
 export default function App() {
@@ -44,16 +46,16 @@ export default function App() {
           <Route path="/companies" element={<ProtectedRoute roles={["super_admin"]}><Companies /></ProtectedRoute>} />
           <Route path="/companies/new" element={<ProtectedRoute roles={["super_admin"]}><CompanyForm /></ProtectedRoute>} />
           <Route path="/companies/:id" element={<ProtectedRoute roles={["super_admin"]}><CompanyView /></ProtectedRoute>} />
-          {/* Edit is shared: a company account may only edit its own id (enforced inside CompanyForm) */}
-          <Route path="/companies/:id/edit" element={<CompanyForm />} />
-          <Route path="/companies/:id/users" element={<CompanyUsers />} />
+          <Route path="/company/:id/edit" element={<ProtectedRoute><CompanyDetails /></ProtectedRoute>} />
+          <Route path="/company/:id/users" element={<ProtectedRoute><CompanyUsers /></ProtectedRoute>} />
+          <Route path="/company/products/:id" element={<ProtectedRoute><CompanyProducts /></ProtectedRoute>} />
 
           <Route path="/categories" element={<ProtectedRoute roles={["super_admin"]}><Categories /></ProtectedRoute>} />
           <Route path="/map" element={<MapManage />} />
           <Route path="/reports" element={<ProtectedRoute roles={["super_admin"]}><Reports /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute roles={["super_admin"]}><Users /></ProtectedRoute>} />
           <Route path="/settings"  element={<Settings />} />
-          <Route path="/companies/:id/settings" element={<CompanySettings />} />
+          <Route path="/company/:id/settings" element={<CompanySettings />} />
           <Route path="*" element={<Dashboard />} />
         </Route>
       </Routes>

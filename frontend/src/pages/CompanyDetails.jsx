@@ -16,7 +16,7 @@ function parseProducts(value = "") {
     .filter(Boolean);
 }
 
-export default function CompanyForm() {
+export default function CompanyDetails() {
   const { openSidebar } = useSidebar();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -221,16 +221,32 @@ export default function CompanyForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    // Wire this to your real API — payload is already shaped and ready:
-    // const body = new FormData();
-    // Object.entries(form).forEach(([k, v]) => body.append(k, v));
-    // if (pin) { body.append("lat", pin[0]); body.append("lng", pin[1]); }
-    // images.filter((i) => i.file).forEach((i) => body.append("images", i.file));
-    // await api.post(`/companies${isEdit ? "/" + id : ""}`, body, { isForm: true });
-    setSaved(true);
-    setTimeout(() => navigate(COMPANY_MANAGEMENT_ROLES.includes(user?.role) ? "/my-company" : "/companies"), 900);
+
+    if (!companyId) {
+      setMessage("Company id is missing.");
+      return;
+    }
+
+    try {
+      await api.put(`/api/company/companies/${companyId}`, {
+        company_name: form.name,
+        phone: form.phone,
+        email: form.email,
+        address: form.address,
+        latitude: pin ? pin[0] : null,
+        longitude: pin ? pin[1] : null,
+        description: form.description,
+        status: companyDetails?.status || "Active",
+      });
+
+      setSaved(true);
+      setMessage("");
+      setTimeout(() => navigate(COMPANY_MANAGEMENT_ROLES.includes(user?.role) ? "/my-company" : "/companies"), 900);
+    } catch (error) {
+      setMessage(error.message || "Could not save company details.");
+    }
   };
 
   const productList = Array.isArray(companyDetails?.products) && companyDetails.products.length
@@ -360,15 +376,7 @@ export default function CompanyForm() {
                   <label className="form-label">Description</label>
                   <textarea className="form-control" rows={4} placeholder="Enter company description..." value={form.description} onChange={update("description")} />
                 </div>
-                <div>
-                  <label className="form-label">Products / Services</label>
-                  <div className="input-group">
-                    <input className="form-control" placeholder="Enter products or services (comma separated)" value={form.products} onChange={update("products")} disabled={!editableFields.products} />
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("products")} title="Edit field">
-                      <i className="bi bi-pencil" />
-                    </button>
-                  </div>
-                  <div className="d-flex flex-wrap gap-2 mt-3">
+                 <div className="d-flex flex-wrap gap-2 mt-3">
                     {productList.length > 0 ? (
                       productList.map((product) => (
                         <span key={product} className="badge rounded-pill" style={{ background: "var(--color-bg)", color: "var(--color-primary)", border: "1px solid var(--color-border)", padding: "0.5rem 0.7rem" }}>
@@ -379,7 +387,6 @@ export default function CompanyForm() {
                       <span className="text-muted-brand" style={{ fontSize: "0.85rem" }}>Add products to preview them here.</span>
                     )}
                   </div>
-                </div>
               </div>
             </div>
 
