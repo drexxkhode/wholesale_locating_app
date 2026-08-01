@@ -26,20 +26,21 @@ const {
   getProducts,
   getCategories
 } = require("../controller/companyController");
+const checkMaintenance = require("../middleware/checkMaintenance");
 
-router.get("/categories", protect, getCategories);
-router.post("/categories", protect, addCategory);
-router.put("/categories/:id", protect, updateCategory);
-router.delete("/categories/:id", protect, deleteCategory);
+router.get("/categories", protect, checkMaintenance, getCategories);
+router.post("/categories", protect,checkMaintenance, addCategory);
+router.put("/categories/:id", protect, checkMaintenance,updateCategory);
+router.delete("/categories/:id", protect, checkMaintenance, deleteCategory);
 
-router.post("/companies", protect, addCompany);
-router.put("/companies/:id", protect, updateCompany);
-router.delete("/companies/:id", protect, deleteCompany);
+router.post("/companies", protect, checkMaintenance,addCompany);
+router.put("/companies/:id", protect, checkMaintenance, updateCompany);
+router.delete("/companies/:id", protect,checkMaintenance, deleteCompany);
 
-router.post("/new-product", protect, addProduct);
-router.get("/products/:company_id", protect, getProducts);
-router.put("/products/:id", protect, updateProduct);
-router.delete("/products/:id", protect, deleteProduct);
+router.post("/new-product", protect, checkMaintenance,addProduct);
+router.get("/products/:company_id", protect,checkMaintenance, getProducts);
+router.put("/products/:id", protect, checkMaintenance, updateProduct);
+router.delete("/products/:id", protect, checkMaintenance, deleteProduct);
 
 
 

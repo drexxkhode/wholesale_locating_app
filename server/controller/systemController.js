@@ -1,5 +1,21 @@
 const db           = require("../config/db");
 
+const {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require("../middleware/upload");
+/* ================= HELPER: extract Cloudinary public_id from URL ========= */
+const extractPublicId = (url) => {
+  if (!url || !url.includes("cloudinary.com")) return null;
+  try {
+    const afterUpload = url.split("/upload/")[1];
+    if (!afterUpload) return null;
+    const withoutVersion = afterUpload.replace(/^v\d+\//, "");
+    return withoutVersion.replace(/\.[^/.]+$/, "");
+  } catch {
+    return null;
+  }
+};
 
 exports.getSystemDetails = async (req, res) => {
   try {
@@ -98,11 +114,27 @@ exports.updateSystemDetails = async (req, res) => {
     const {
       system_name,
       other_name,
-      system_logo,
       system_email,
       description,
       maintenance_mode
     } = req.body;
+
+    const [existing] = await db.query(
+  `SELECT system_logo FROM system_details WHERE id = ?`,
+  [id]
+);
+
+    
+// Upload photo to Cloudinary if provided
+let system_logo = existing[0]?.system_logo || null;
+    if (req.file) {
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        "gis_system/logo",
+        `logo_${id}_${Date.now()}`,
+      );
+      system_logo = result.secure_url;
+    }
 
     const [result] = await db.query(
       `UPDATE system_details
@@ -117,7 +149,7 @@ exports.updateSystemDetails = async (req, res) => {
       [
         system_name,
         other_name,
-        system_logo,
+        system_logo, // Use new photo URL if uploaded, else keep existing
         system_email,
         description,
         maintenance_mode,
@@ -132,7 +164,8 @@ exports.updateSystemDetails = async (req, res) => {
     }
 
     res.json({
-      message: "System details updated successfully"
+      message: "System details updated successfully",
+      system_logo
     });
 
   } catch (err) {
@@ -162,3 +195,53 @@ exports.getDatabaseSize = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Remove system logo — deletes from Cloudinary + sets system_logo. = NULL
+exports.deleteLogo = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await db.query(
+      `SELECT id, system_logo FROM system_details WHERE id = ? LIMIT 1`, [id]
+    );
+    if (!rows.length) return res.status(404).json({ message: 'No Logo' });
+
+    const publicId = extractPublicId(rows[0].system_logo);
+
+    // Clear from DB first
+    await db.query(`UPDATE system_details SET system_logo = NULL WHERE id = ?`, [id]);
+
+    // Then delete from Cloudinary
+    if (publicId) await deleteFromCloudinary(publicId);
+
+    // Return updated user
+    const [updated] = await db.query(
+      `SELECT * FROM system_details WHERE id = ? LIMIT 1`,
+      [id]
+    );
+
+    console.log(`[System-Logo] removed  id=${id}`);
+    return res.json({ message: ' system logo removed', system_logo: updated[0] });
+  } catch (err) {
+    console.error('deleteSystemLogo error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getLogo = async (req, res) =>{
+  try {
+    const [rows] = await db.query(
+      "SELECT id, system_logo FROM system_details LIMIT 1"
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "No logo found" });
+    }
+
+    res.json(rows[0]);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+}

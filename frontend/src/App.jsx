@@ -17,6 +17,7 @@ import CompanyUsers from "./pages/CompanyUsers";
 import CompanySettings from "./pages/CompanySettings";
 import CompanyDetails from "./pages/CompanyDetails";
 import CompanyProducts from "./pages/CompanyProducts";
+import MaintenancePage from "./pages/Maintenance";
 
 function MyWarehouseRedirect() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Navigate to="/login" replace />} />
-
+        <Route path="/maintenance" element={<MaintenancePage />} />
         <Route
           element={
             <ProtectedRoute>

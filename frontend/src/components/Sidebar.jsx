@@ -1,11 +1,18 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.png";
+import { useState, useEffect } from "react";
+import { api } from "../api/client"; // named import
 
 const superAdminLinks = [
   { to: "/", label: "Dashboard", icon: "bi-speedometer2", end: true },
   { to: "/companies", label: "Companies", icon: "bi-shop", end: false },
-  { to: "/categories", label: "Categories", icon: "bi-grid-3x3-gap-fill", end: false },
+  {
+    to: "/categories",
+    label: "Categories",
+    icon: "bi-grid-3x3-gap-fill",
+    end: false,
+  },
   { to: "/map", label: "Map", icon: "bi-map-fill", end: false },
   { to: "/reports", label: "Reports", icon: "bi-bar-chart-fill", end: false },
   { to: "/users", label: "Users", icon: "bi-people-fill", end: false },
@@ -17,17 +24,58 @@ const superAdminLinks = [
 const companyLinks = [
   { to: "/", label: "Dashboard", icon: "bi-speedometer2", end: true },
   { to: "/my-company", label: "My Warehouse", icon: "bi-shop", end: false },
-  { to: "/company/products/:id", label: "Products", icon: "bi-box-seam", end: false },
-  { to: "/company/:id/users", label: "Users", icon: "bi-people-fill", end: false },
-  { to: "/company/:id/settings", label: "Settings", icon: "bi-gear-fill", end: false },
+  {
+    to: "/company/products/:id",
+    label: "Products",
+    icon: "bi-box-seam",
+    end: false,
+  },
+  {
+    to: "/company/:id/users",
+    label: "Users",
+    icon: "bi-people-fill",
+    end: false,
+  },
+  {
+    to: "/company/:id/settings",
+    label: "Settings",
+    icon: "bi-gear-fill",
+    end: false,
+  },
 ];
 
-export default function Sidebar({ open, onClose, collapsed, onToggleCollapsed }) {
+export default function Sidebar({
+  open,
+  onClose,
+  collapsed,
+  onToggleCollapsed,
+}) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const isCompanyUser = user?.role === "warehouse_manager" || user?.role === "warehouse_user";
+  const [systemLogo, setSystemLogo] = useState(null);
+  useEffect(() => {
+  const getLogo = async () => {
+    try {
+      const log = await api.get("/api/system/logo");
+      setSystemLogo(log.system_logo);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  getLogo();
+
+  const onUpdate = (e) => setSystemLogo(e.detail);
+  window.addEventListener("system-logo-updated", onUpdate);
+  return () => window.removeEventListener("system-logo-updated", onUpdate);
+}, []);
+
+  const isCompanyUser =
+    user?.role === "warehouse_manager" || user?.role === "warehouse_user";
   const links = isCompanyUser
-    ? companyLinks.map((link) => ({ ...link, to: link.to.replace(":id", user.companyId) }))
+    ? companyLinks.map((link) => ({
+        ...link,
+        to: link.to.replace(":id", user.companyId),
+      }))
     : superAdminLinks;
 
   const handleLogout = () => {
@@ -44,15 +92,29 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapsed })
           onClick={onClose}
         />
       )}
-      <aside className={`admin-sidebar ${open ? "open" : ""} ${collapsed ? "collapsed" : ""}`}>
+      <aside
+        className={`admin-sidebar ${open ? "open" : ""} ${collapsed ? "collapsed" : ""}`}
+      >
         <div className="d-flex align-items-center gap-2 px-3 py-4 sidebar-brand-row">
           <span className="sidebar-logo-wrap flex-shrink-0">
-            <img src={logo} alt="North Industrial Area Wholesale Locator" className="sidebar-logo" />
+            <img
+              src={systemLogo || logo}
+              alt="North Industrial Area Wholesale Locator"
+              className="sidebar-logo"
+            />
           </span>
           <div className="d-flex flex-column lh-1 sidebar-label">
-            <span className="fw-bold text-white" style={{ fontSize: "0.85rem" }}>NORTH INDUSTRIAL AREA</span>
+            <span
+              className="fw-bold text-white"
+              style={{ fontSize: "0.85rem" }}
+            >
+              NORTH INDUSTRIAL AREA
+            </span>
             <span style={{ fontSize: "0.68rem", color: "var(--sidebar-text)" }}>
-              {user?.role === "warehouse_manager" || user?.role === "warehouse_user" ? "Wholesale Locator · Company" : "Wholesale Locator · Administrator"}
+              {user?.role === "warehouse_manager" ||
+              user?.role === "warehouse_user"
+                ? "Wholesale Locator · Company"
+                : "Wholesale Locator · Administrator"}
             </span>
           </div>
         </div>
@@ -65,7 +127,9 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapsed })
               end={l.end}
               onClick={onClose}
               title={collapsed ? l.label : undefined}
-              className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}
+              className={({ isActive }) =>
+                "sidebar-link" + (isActive ? " active" : "")
+              }
             >
               <i className={`bi ${l.icon}`} />
               <span className="sidebar-label">{l.label}</span>
@@ -79,12 +143,21 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapsed })
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-label="Toggle sidebar"
         >
-          <i className={`bi ${collapsed ? "bi-chevron-double-right" : "bi-chevron-double-left"}`} />
+          <i
+            className={`bi ${collapsed ? "bi-chevron-double-right" : "bi-chevron-double-left"}`}
+          />
           <span className="sidebar-label">Collapse</span>
         </button>
 
-        <div className="p-2 border-top" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-          <button className="sidebar-link w-100 border-0 bg-transparent text-start" onClick={handleLogout} title={collapsed ? "Logout" : undefined}>
+        <div
+          className="p-2 border-top"
+          style={{ borderColor: "rgba(255,255,255,0.08)" }}
+        >
+          <button
+            className="sidebar-link w-100 border-0 bg-transparent text-start"
+            onClick={handleLogout}
+            title={collapsed ? "Logout" : undefined}
+          >
             <i className="bi bi-box-arrow-right" />
             <span className="sidebar-label">Logout</span>
           </button>

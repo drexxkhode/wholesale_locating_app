@@ -419,7 +419,8 @@ export default function Settings() {
     },
     [systemLogoPreview],
   );
-const getDbSize = async() =>{
+  
+const getDbSize = async () =>{
 try{
 const size = await api.get("/api/system/database-size");
 setDbSize(size.size_mb);
@@ -434,42 +435,41 @@ console.error(e)
     getDbSize();
   }, []);
 
-  const saveSystemDetails = async () => {
-    try {
-      setSavingSystem(true);
+const saveSystemDetails = async () => {
+  try {
+    setSavingSystem(true);
 
-      const formData = new FormData();
+    const formData = new FormData();
+    Object.keys(system).forEach((key) => {
+      if (key === "system_logo") return;
+      const value = system[key];
+      formData.append(key, typeof value === "boolean" ? (value ? 1 : 0) : value);
+    });
+    if (systemLogo) formData.append("system_logo", systemLogo);
 
-      Object.keys(system).forEach((key) => {
-        const value = system[key];
-        // MySQL tinyint columns (e.g. maintenance_mode) expect 0/1, not
-        // the string "true"/"false" that FormData would otherwise send.
-        formData.append(key, typeof value === "boolean" ? (value ? 1 : 0) : value);
-      });
+    const data = await api.put(`/api/system/system-details/${system.id}`, formData, {
+      isForm: true,
+    });
 
-      if (systemLogo) {
-        formData.append("system_logo", systemLogo);
-      }
+    setEditingSystemField(null);
+    setSystemLogo(null);
+    setSystemLogoPreview(null);
+    if (logoInputRef.current) logoInputRef.current.value = "";
 
-      await api.put(`/api/system/system-details/${system.id}`, formData, {
-        isForm: true,
-      });
+    await loadSystemDetails();
 
-      setEditingSystemField(null);
-      setSystemLogo(null);
-      setSystemLogoPreview(null);
-      if (logoInputRef.current) logoInputRef.current.value = "";
+    // use the actual returned/updated logo, not an undefined variable
+    window.dispatchEvent(
+      new CustomEvent("system-logo-updated", { detail: data.system_logo ?? "" })
+    );
 
-      await loadSystemDetails();
-
-      setMessage("System settings updated successfully.");
-    } catch (err) {
-      setMessage(err.message);
-    } finally {
-      setSavingSystem(false);
-    }
-  };
-
+    setMessage("System settings updated successfully.");
+  } catch (err) {
+    setMessage(err.message);
+  } finally {
+    setSavingSystem(false);
+  }
+};
   const updateProfileField = (field, value) => {
     setProfile((currentProfile) => ({ ...currentProfile, [field]: value }));
   };
@@ -498,12 +498,14 @@ console.error(e)
         formData.append(key, typeof value === "boolean" ? (value ? 1 : 0) : value);
       });
 
-      await api.put(`/api/system/system-details/${system.id}`, formData, {
+      await api.del(`/api/system/logo/${system.id}`, formData, {
         isForm: true,
       });
 
+    
       await loadSystemDetails();
-      setMessage("System logo removed.");
+window.dispatchEvent(new CustomEvent("system-logo-updated", { detail: "" }));
+setMessage("System logo removed.");
     } catch (err) {
       setMessage(err.message);
     } finally {

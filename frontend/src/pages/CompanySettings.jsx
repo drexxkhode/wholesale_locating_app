@@ -5,7 +5,18 @@ import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
 
 const tabs = ["Profile", "Change Password"];
-
+// Renders a date string as "July 31, 2026". Falls back to "—" if the
+// value is missing or isn't a parseable date.
+const formatDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
 const getInitials = (name = "") =>
   name
     .trim()
@@ -91,6 +102,81 @@ export default function CompanySettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isRemovingPhoto, setIsRemovingPhoto] = useState(false);
   const [message, setMessage] = useState("");
+  const [dbSize, setDbSize] = useState([]);
+  const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
+   const [showPw, setShowPw] = useState(false);
+   const[saving, setSaving] = useState(false);
+  const [showPwd, setShowPwd] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  });
+  const [err, setErr] = useState("");
+  const [success, setSuccess] = useState("");
+  const [system, setSystem] = useState({
+    id: "",
+    system_name: "",
+    other_name: "",
+    system_version: "",
+    system_email: "",
+    maintenance_mode: false,
+    updated_at: "",
+
+  });
+
+const handle = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+  const handlePwd = (f) => (e) =>
+    setPwd((p) => ({ ...p, [f]: e.target.value }));
+  const toggleShow = (f) => () => setShowPwd((p) => ({ ...p, [f]: !p[f] }));
+  const clearMsgs = () => {
+    setErr("");
+    setSuccess("");
+  };
+
+  // Auto-dismiss messages after 4 seconds
+  useEffect(() => {
+    if (!err && !success && !message) return;
+    const t = setTimeout(() => {
+      setErr("");
+      setSuccess("");
+      setMessage("");
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [err, success, message]);
+
+  //── Change password ─────────────────────────────────────────────────────
+  const changePassword = async () => {
+    clearMsgs();
+    if (!pwd.current) {
+      setErr("Enter your current password");
+      return;
+    }
+    if (pwd.next.length < 6) {
+      setErr("New password must be at least 6 characters");
+      return;
+    }
+    if (pwd.next !== pwd.confirm) {
+      setErr("New passwords do not match");
+      return;
+    }
+    try {
+      setSaving(true);
+
+      await api.put(`/api/auth/change-password/${user.id}`, {
+        currentPassword: pwd.current,
+        newPassword: pwd.next,
+      });
+
+      setSaving(false);
+      setPwd({ current: "", next: "", confirm: "" });
+      setSuccess("Password changed successfully!");
+    } catch (e) {
+      setErr(e.message ?? "Failed to change password");
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!user?.id) return;
@@ -182,7 +268,52 @@ export default function CompanySettings() {
     }
   };
 
+   const loadSystemDetails = async () => {
+    try {
+      const data = await api.get("/api/system/system-details");
+
+      setSystem({
+        id: data.id,
+        system_logo: data.system_logo || "",
+        system_name: data.system_name || "",
+        system_version: data.system_version || "1.0.0",
+        other_name: data.other_name || "",
+        system_email: data.system_email || "",
+        maintenance_mode: !!data.maintenance_mode,
+        updated_at: data.updated_at || "",
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  
+const getDbSize = async() =>{
+try{
+const size = await api.get("/api/system/database-size");
+setDbSize(size.size_mb);
+}catch(e){
+console.error(e)
+}
+};
+  // FETCH SYSTEM DETAILS — used by both the Profile info card and the
+  // System Settings tab, so it's loaded once here.
+  useEffect(() => {
+    loadSystemDetails();
+    getDbSize();
+  }, []);
+
   const displayedPhoto = photoPreview || profileUser?.photo;
+
+  const systemInfoRows = [
+    ["System Name", system.system_name || "—"],
+    ["Other Name", system.other_name || "—"],
+    ["Version", system.syste_version || "1.0.0"],
+    ["Support Email", system.system_email || "—"],
+    ["Last Updated", formatDate(system.updated_at)],
+    ["Database Size", `${dbSize} MB`],
+    ["Maintenance Mode", system.maintenance_mode ? "On" : "Off"],
+  ];
 
   return (
     <>
@@ -208,7 +339,7 @@ export default function CompanySettings() {
 
         {tab === "Profile" && (
           <div className="row g-3">
-            <div className="col-12">
+            <div className="col-6">
               <div className="card-surface p-4">
                 <p className="fw-semibold mb-3">Profile Information</p>
                 <div className="d-flex flex-column align-items-center mb-4">
@@ -242,6 +373,7 @@ export default function CompanySettings() {
                   <EditableProfileField field="email" label="Email" value={profile.email} editingField={editingField} onChange={updateProfileField} setEditingField={setEditingField} />
                   <EditableProfileField field="phone" label="Phone" value={profile.phone} editingField={editingField} onChange={updateProfileField} setEditingField={setEditingField} />
                   <div className="col-sm-6"><label className="form-label">Role</label><input className="form-control" value={profileUser?.role ?? ""} disabled /></div>
+                 
                 </div>
 
                 {message && <p className={`mt-3 mb-0 ${message.includes("successfully") || message.includes("removed") ? "text-success" : "text-danger"}`}>{message}</p>}
@@ -250,18 +382,162 @@ export default function CompanySettings() {
                 </button>
               </div>
             </div>
+             <div className="col-lg-6">
+              <div className="card-surface p-4">
+                <div className="d-flex align-items-center gap-3 mb-3">
+                  {system.system_logo && (
+                    <img
+                      src={system.system_logo}
+                      alt=""
+                      className="rounded border"
+                      style={{ width: 36, height: 36, objectFit: "cover" }}
+                    />
+                  )}
+                  <p className="fw-semibold mb-0">System Information</p>
+                </div>
+                {systemInfoRows.map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="d-flex justify-content-between py-2 border-bottom"
+                    style={{ fontSize: "0.88rem" }}
+                  >
+                    <span className="text-muted-brand">{label}</span>
+                    <span className="fw-medium">{value}</span>
+                  </div>
+                ))}
+                <p
+                  className="text-muted-brand mt-2 mb-0"
+                  style={{ fontSize: "0.78rem" }}
+                >
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
         {tab === "Change Password" && (
           <div className="card-surface p-4" style={{ maxWidth: 480 }}>
             <p className="fw-semibold mb-3">Change Password</p>
-            <div className="mb-3"><label className="form-label">Current Password</label><input type="password" className="form-control" /></div>
-            <div className="mb-3"><label className="form-label">New Password</label><input type="password" className="form-control" /></div>
-            <div className="mb-3"><label className="form-label">Confirm New Password</label><input type="password" className="form-control" /></div>
-            <button className="btn btn-brand rounded-3 px-4">Update Password</button>
+
+            <div className="d-flex flex-column gap-3">
+              {[
+                {
+                  key: "current",
+                  label: "Current Password",
+                  placeholder: "Enter current password",
+                },
+                {
+                  key: "next",
+                  label: "New Password",
+                  placeholder: "At least 6 characters",
+                },
+                {
+                  key: "confirm",
+                  label: "Confirm New Password",
+                  placeholder: "Repeat new password",
+                },
+              ].map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className="form-label">{label}</label>
+
+                  <div className="input-group">
+                    <span className="input-group-text bg-light border-end-0">
+                      <i className="bi bi-lock-fill text-primary-brand"></i>
+                    </span>
+
+                    <input
+                      className="form-control border-start-0 border-end-0"
+                      type={showPwd[key] ? "text" : "password"}
+                      value={pwd[key]}
+                      onChange={handlePwd(key)}
+                      placeholder={placeholder}
+                    />
+
+                    <button
+                      type="button"
+                      className="input-group-text bg-light"
+                      onClick={toggleShow(key)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <i
+                        className={`bi ${
+                          showPwd[key] ? "bi-eye-slash" : "bi-eye"
+                        } text-muted`}
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {pwd.next.length > 0 && (
+                <div>
+                  <div className="d-flex justify-content-between mb-1">
+                    <small className="text-muted">Password strength</small>
+
+                    <small
+                      className="fw-semibold"
+                      style={{
+                        color:
+                          pwd.next.length < 6
+                            ? "#dc3545"
+                            : pwd.next.length < 10
+                              ? "#fd7e14"
+                              : "#198754",
+                      }}
+                    >
+                      {pwd.next.length < 6
+                        ? "Weak"
+                        : pwd.next.length < 10
+                          ? "Fair"
+                          : "Strong"}
+                    </small>
+                  </div>
+
+                  <div className="progress" style={{ height: 5 }}>
+                    <div
+                      className="progress-bar"
+                      style={{
+                        width: `${Math.min(100, (pwd.next.length / 12) * 100)}%`,
+                        background:
+                          pwd.next.length < 6
+                            ? "#dc3545"
+                            : pwd.next.length < 10
+                              ? "#fd7e14"
+                              : "#198754",
+                        transition: "width .3s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {err && <div className="alert alert-danger py-2 mb-0">{err}</div>}
+
+              {success && (
+                <div className="alert alert-success py-2 mb-0">{success}</div>
+              )}
+
+              <button
+                className="btn btn-brand rounded-3 px-4"
+                onClick={changePassword}
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-shield-lock me-2"></i>
+                    Update Password
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
+
       </div>
     </>
   );

@@ -13,26 +13,27 @@ const {
   changePassword
 } = require("../controller/adminController");
 const protect = require("../middleware/auth");
+const checkMaintenance = require("../middleware/checkMaintenance");
 //const passwordResetRateLimit  = require("../../middleware/passwordResetRateLimit");
 const {upload} =require('../middleware/upload');
 const router  = express.Router(); // mergeParams to access :id from parent
 
 //GENERAL
 router.post("/login", login);
-router.get("/me", protect, getMe);
-router.get("/company-name", protect, getCompanyName);
+router.get("/me", protect, checkMaintenance,getMe);
+router.get("/company-name", protect, checkMaintenance, getCompanyName);
 
 //DISPLAY TO SUPER ADMINS
-router.get("/dashboard", protect, getDashboardDetails);
-router.get("/admins", protect, getAllAdmins);
-router.get("/companies", protect, getAllCompanies);
+router.get("/dashboard", protect, checkMaintenance,getDashboardDetails);
+router.get("/admins", protect, checkMaintenance, getAllAdmins);
+router.get("/companies", protect, checkMaintenance, getAllCompanies);
 
 //DISPLAY TO COMPANY ADMINS
-router.get("/company-admins", protect, getAllCompanyAdmins);
-router.put("/update/:id", protect, upload.single("photo"), updateUser);
-router.delete("/admins/:id/photo", protect, deleteAdminPhoto);
-router.get("/mycompany/:company_id", protect,  getMyCompanyDetails)
-router.put("/change-password/:id", protect, changePassword);
+router.get("/company-admins", protect, checkMaintenance, getAllCompanyAdmins);
+router.put("/update/:id", protect, checkMaintenance, upload.single("photo"), updateUser);
+router.delete("/admins/:id/photo", protect, checkMaintenance, deleteAdminPhoto);
+router.get("/mycompany/:company_id", protect, checkMaintenance, getMyCompanyDetails);
+router.put("/change-password/:id", protect, checkMaintenance, changePassword);
 
 /*router.post("/register",protect, upload.single('photo'), register);
 router.delete("/delete/:id", protect, deleteUser); 

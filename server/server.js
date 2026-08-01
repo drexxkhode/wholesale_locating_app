@@ -34,8 +34,9 @@ app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/images", express.static(path.join(__dirname, "images")));
 
-// Routes
 app.use("/api/auth", adminRoute);
+
+// Routes
   
 app.use('/api/system', systemRoute);  
 app.use('/api/company', companyRoute); 
