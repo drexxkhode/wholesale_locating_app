@@ -57,8 +57,10 @@ async function request(path, { method = "GET", body, isForm = false } = {}) {
 
     // Unauthorized
     if (res.status === 401) {
-      // Don't redirect for login failures — let the login form show the error
-      if (path !== "/api/auth/login") {
+      const isSessionIssue = ["Invalid token", "Not authorized", "Token expired"].includes(data?.message);
+
+      // Only redirect for real session/auth failures, not for ordinary permission errors.
+      if (path !== "/api/auth/login" && isSessionIssue) {
         localStorage.removeItem(TOKEN_KEY);
         if (window.location.pathname !== "/login") {
           window.location.href = "/login";

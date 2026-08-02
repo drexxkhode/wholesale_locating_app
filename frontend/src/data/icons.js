@@ -13,7 +13,7 @@ export const iconOptions = [
   "bi-cart-check-fill",
   "bi-box-seam-fill",
   "bi-box-fill",
-/*
+
   "bi-grid-fill",
   "bi-grid-3x3-gap-fill",
   "bi-collection-fill",
@@ -106,6 +106,6 @@ export const iconOptions = [
   "bi-award-fill",
   "bi-fire",
   "bi-rocket-fill",
-  "bi-moon-stars-fill", */
+  "bi-moon-stars-fill", 
 ];
 

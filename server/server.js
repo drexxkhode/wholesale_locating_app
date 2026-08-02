@@ -7,6 +7,7 @@ const db = require("./config/db");
 
 const companyImageRoute = require('./routes/imageRoute');
 const adminRoute = require('./routes/adminRoute');
+const userRoute = require('./routes/userRoute');
 const companyRoute = require("./routes/companyRoute");
 const mapRoute = require("./routes/mapRoute");
 const systemRoute = require("./routes/systemRoute");
@@ -35,6 +36,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/images", express.static(path.join(__dirname, "images")));
 
 app.use("/api/auth", adminRoute);
+app.use("/api/user", userRoute);
 
 // Routes
   

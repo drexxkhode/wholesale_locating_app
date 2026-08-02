@@ -8,7 +8,7 @@ const {
     updateSystemDetails,
     getDatabaseSize,
     deleteLogo,
-    getLogo
+    getSystemDetail
  } = require("../controller/systemController");
  const {upload} = require("../middleware/upload");
 
@@ -16,7 +16,7 @@ router.get("/system-details", protect,checkMaintenance, getSystemDetails);
 router.get("/database-size", protect,checkMaintenance, getDatabaseSize);
 router.post("/system-details", protect,checkMaintenance, addSystemDetails);
 router.delete('/logo/:id', protect,           checkMaintenance,              deleteLogo);
-router.get('/logo',               getLogo);
+router.get('/sys-details',               getSystemDetail);
 
 router.put("/system-details/:id", protect, checkMaintenance, upload.single("system_logo") , updateSystemDetails);
 

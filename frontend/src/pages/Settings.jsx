@@ -4,6 +4,7 @@ import Avatar from "../components/Avatar";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/client";
+import {useModal} from "../context/ModalContext";
 
 const tabs = ["Profile", "Change Password", "System Settings"];
 
@@ -285,6 +286,7 @@ export default function Settings() {
   const { user, updateCurrentUser } = useAuth();
   const [saving, setSaving] = useState(false);
   const photoInputRef = useRef(null);
+  const { showModal } = useModal();
   const [editingField, setEditingField] = useState(null);
   const [profileUser, setProfileUser] = useState(null);
   const [profile, setProfile] = useState({
@@ -317,15 +319,13 @@ export default function Settings() {
   const [showPw, setShowPw] = useState(false);
   const [dbSize, setDbSize] = useState([]);
   const [isRemovingPhoto, setIsRemovingPhoto] = useState(false);
-  const [message, setMessage] = useState("");
   const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
   const [showPwd, setShowPwd] = useState({
     current: false,
     next: false,
     confirm: false,
   });
-  const [err, setErr] = useState("");
-  const [success, setSuccess] = useState("");
+  
 
   const updateSystemField = (field, value) => {
     setSystem((prev) => ({
@@ -338,7 +338,7 @@ export default function Settings() {
     try {
       const data = await api.get("/api/system/system-details");
 
-      setSystem({
+  const next =  {
         id: data.id,
         system_name: data.system_name || "",
         other_name: data.other_name || "",
@@ -347,7 +347,10 @@ export default function Settings() {
         maintenance_mode: !!data.maintenance_mode,
         description: data.description || "",
         updated_at: data.updated_at || "",
-      });
+      };
+      setSystem(next);
+      return next;
+
     } catch (err) {
       console.log(err);
     }
@@ -357,21 +360,8 @@ export default function Settings() {
   const handlePwd = (f) => (e) =>
     setPwd((p) => ({ ...p, [f]: e.target.value }));
   const toggleShow = (f) => () => setShowPwd((p) => ({ ...p, [f]: !p[f] }));
-  const clearMsgs = () => {
-    setErr("");
-    setSuccess("");
-  };
+  
 
-  // Auto-dismiss messages after 4 seconds
-  useEffect(() => {
-    if (!err && !success && !message) return;
-    const t = setTimeout(() => {
-      setErr("");
-      setSuccess("");
-      setMessage("");
-    }, 4000);
-    return () => clearTimeout(t);
-  }, [err, success, message]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -391,7 +381,6 @@ export default function Settings() {
             email: currentUser.email ?? "",
             phone: currentUser.phone ?? "",
           });
-          setMessage("");
         } else {
           setProfileUser(user);
           setProfile({
@@ -400,10 +389,12 @@ export default function Settings() {
             email: user?.email ?? "",
             phone: user?.phone ?? "",
           });
-          setMessage("Your profile could not be found.");
+          showModal("Could not load profile details.", { type: "error", title: "Error",
+             autoClose: true, autoCloseDelay: 2000, confirmText: false });
         }
       })
-      .catch((error) => setMessage(error.message));
+      .catch((error) => showModal(error.message || "Could not load profile details.", { type: "error", title: "Error", autoClose: true,
+         autoCloseDelay: 2000, confirmText: false }));
   }, [user?.id, user?.name, user?.username, user?.email, user?.phone]);
 
   useEffect(
@@ -419,15 +410,15 @@ export default function Settings() {
     },
     [systemLogoPreview],
   );
-  
-const getDbSize = async () =>{
-try{
-const size = await api.get("/api/system/database-size");
-setDbSize(size.size_mb);
-}catch(e){
-console.error(e)
-}
-};
+
+  const getDbSize = async () => {
+    try {
+      const size = await api.get("/api/system/database-size");
+      setDbSize(size.size_mb);
+    } catch (e) {
+      console.error(e);
+    }
+  };
   // FETCH SYSTEM DETAILS — used by both the Profile info card and the
   // System Settings tab, so it's loaded once here.
   useEffect(() => {
@@ -435,41 +426,52 @@ console.error(e)
     getDbSize();
   }, []);
 
-const saveSystemDetails = async () => {
-  try {
-    setSavingSystem(true);
+  const saveSystemDetails = async () => {
+    try {
+      setSavingSystem(true);
 
-    const formData = new FormData();
-    Object.keys(system).forEach((key) => {
-      if (key === "system_logo") return;
-      const value = system[key];
-      formData.append(key, typeof value === "boolean" ? (value ? 1 : 0) : value);
-    });
-    if (systemLogo) formData.append("system_logo", systemLogo);
+      const formData = new FormData();
+      Object.keys(system).forEach((key) => {
+        if (key === "system_logo") return;
+        const value = system[key];
+        formData.append(
+          key,
+          typeof value === "boolean" ? (value ? 1 : 0) : value,
+        );
+      });
+      if (systemLogo) formData.append("system_logo", systemLogo);
 
-    const data = await api.put(`/api/system/system-details/${system.id}`, formData, {
-      isForm: true,
-    });
+      const data = await api.put(
+        `/api/system/system-details/${system.id}`,
+        formData,
+        {
+          isForm: true,
+        },
+      );
 
-    setEditingSystemField(null);
-    setSystemLogo(null);
-    setSystemLogoPreview(null);
-    if (logoInputRef.current) logoInputRef.current.value = "";
+      setEditingSystemField(null);
+      setSystemLogo(null);
+      setSystemLogoPreview(null);
+      if (logoInputRef.current) logoInputRef.current.value = "";
 
-    await loadSystemDetails();
+         const updated =   await loadSystemDetails();
 
-    // use the actual returned/updated logo, not an undefined variable
-    window.dispatchEvent(
-      new CustomEvent("system-logo-updated", { detail: data.system_logo ?? "" })
-    );
+      // use the actual returned/updated logo, not an undefined variable
+      window.dispatchEvent(
+        new CustomEvent("system-details-updated", {
+          detail: updated ?? "",
+        }),
+      );
 
-    setMessage("System settings updated successfully.");
-  } catch (err) {
-    setMessage(err.message);
-  } finally {
-    setSavingSystem(false);
-  }
-};
+      showModal("System settings updated successfully.", { type: "success", 
+        title: "Success", autoClose: true, autoCloseDelay: 2000, confirmText: false });
+    } catch (err) {
+      showModal(err.message || "Could not update system settings.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
+    } finally {
+      setSavingSystem(false);
+    }
+  };
   const updateProfileField = (field, value) => {
     setProfile((currentProfile) => ({ ...currentProfile, [field]: value }));
   };
@@ -495,19 +497,25 @@ const saveSystemDetails = async () => {
       const formData = new FormData();
       Object.keys(system).forEach((key) => {
         const value = key === "system_logo" ? "" : system[key];
-        formData.append(key, typeof value === "boolean" ? (value ? 1 : 0) : value);
+        formData.append(
+          key,
+          typeof value === "boolean" ? (value ? 1 : 0) : value,
+        );
       });
 
       await api.del(`/api/system/logo/${system.id}`, formData, {
         isForm: true,
       });
 
-    
-      await loadSystemDetails();
-window.dispatchEvent(new CustomEvent("system-logo-updated", { detail: "" }));
-setMessage("System logo removed.");
+    const updated =  await loadSystemDetails();
+      window.dispatchEvent(
+        new CustomEvent("system-details-updated", { detail: updated ?? "" }),
+      );
+      showModal("System logo removed.", { type: "info", title: "Info", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (err) {
-      setMessage(err.message);
+      showModal(err.message || "Could not remove system logo.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } finally {
       setSavingSystem(false);
     }
@@ -519,7 +527,6 @@ setMessage("System logo removed.");
 
     setSelectedPhoto(file);
     setPhotoPreview(URL.createObjectURL(file));
-    setMessage("");
   };
 
   const clearSelectedPhoto = () => {
@@ -532,7 +539,6 @@ setMessage("System logo removed.");
     if (!user?.id) return;
 
     setIsSaving(true);
-    setMessage("");
     try {
       const formData = new FormData();
       formData.append("name", profile.name);
@@ -548,9 +554,11 @@ setMessage("System logo removed.");
       setProfileUser(data.admin);
       clearSelectedPhoto();
       setEditingField(null);
-      setMessage("Profile updated successfully.");
+      showModal("Profile updated successfully.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message);
+      showModal(error.message || "Could not update profile.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } finally {
       setIsSaving(false);
     }
@@ -560,14 +568,15 @@ setMessage("System logo removed.");
     if (!user?.id || !user.photo) return;
 
     setIsRemovingPhoto(true);
-    setMessage("");
     try {
       const data = await api.del(`/api/auth/admins/${user.id}/photo`);
       updateCurrentUser(data.admin);
       setProfileUser(data.admin);
-      setMessage("Profile photo removed.");
+      showModal("Profile photo removed.", { type: "info", title: "Info", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message);
+      showModal(error.message || "Could not remove profile photo.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false }); 
     } finally {
       setIsRemovingPhoto(false);
     }
@@ -575,17 +584,20 @@ setMessage("System logo removed.");
 
   // ── Change password ─────────────────────────────────────────────────────
   const changePassword = async () => {
-    clearMsgs();
+    
     if (!pwd.current) {
-      setErr("Enter your current password");
+      showModal("Current password is required.", { type: "warning", title: "Warning", autoClose: true, 
+        autoCloseDelay: 2000, confirmText: false });
       return;
     }
     if (pwd.next.length < 6) {
-      setErr("New password must be at least 6 characters");
+      showModal("New password must be at least 6 characters", { type: "warning", title: "Warning", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       return;
     }
     if (pwd.next !== pwd.confirm) {
-      setErr("New passwords do not match");
+      showModal("New passwords do not match", { type: "warning", title: "Warning", autoClose: true, 
+        autoCloseDelay: 2000, confirmText: false });
       return;
     }
     try {
@@ -598,9 +610,11 @@ setMessage("System logo removed.");
 
       setSaving(false);
       setPwd({ current: "", next: "", confirm: "" });
-      setSuccess("Password changed successfully!");
+      showModal("Password changed successfully.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (e) {
-      setErr(e.message ?? "Failed to change password");
+      showModal(e.message ?? "Failed to change password", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } finally {
       setSaving(false);
     }
@@ -779,13 +793,6 @@ setMessage("System logo removed.");
                     />
                   </div>
                 </div>
-                {message && (
-                  <p
-                    className={`mt-3 mb-0 ${message.includes("successfully") || message.includes("removed") ? "text-success" : "text-danger"}`}
-                  >
-                    {message}
-                  </p>
-                )}
                 <button
                   type="button"
                   className="btn btn-brand rounded-3 mt-4 px-4"
@@ -820,12 +827,6 @@ setMessage("System logo removed.");
                     <span className="fw-medium">{value}</span>
                   </div>
                 ))}
-                <p
-                  className="text-muted-brand mt-2 mb-0"
-                  style={{ fontSize: "0.78rem" }}
-                >
-                  Editable from the System Settings tab.
-                </p>
               </div>
             </div>
           </div>
@@ -927,12 +928,6 @@ setMessage("System logo removed.");
                 </div>
               )}
 
-              {err && <div className="alert alert-danger py-2 mb-0">{err}</div>}
-
-              {success && (
-                <div className="alert alert-success py-2 mb-0">{success}</div>
-              )}
-
               <button
                 className="btn btn-brand rounded-3 px-4"
                 onClick={changePassword}
@@ -1002,7 +997,6 @@ setMessage("System logo removed.");
                 setEditingField={setEditingSystemField}
                 onChange={updateSystemField}
               />
-
             </div>
 
             <div className="row g-3 mt-1">
@@ -1023,17 +1017,7 @@ setMessage("System logo removed.");
                   </label>
                 </div>
               </div>
-
             </div>
-
-            {message && (
-              <p
-                className={`mt-3 mb-0 ${message.includes("successfully") || message.includes("removed") ? "text-success" : "text-danger"}`}
-              >
-                {message}
-              </p>
-            )}
-
             <button
               className="btn btn-brand rounded-3 mt-4 px-4"
               onClick={saveSystemDetails}

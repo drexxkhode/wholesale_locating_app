@@ -21,6 +21,7 @@ logs
 frontend/dist/
 build/
 turfarena-gis-admin/
+turfarena-gis-user/
 
 # OS
 .DS_Store

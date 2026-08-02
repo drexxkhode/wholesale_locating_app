@@ -4,6 +4,8 @@ import Topbar from "../components/Topbar";
 import TableToolbar from "../components/TableToolbar";
 import { useSidebar } from "../context/SidebarContext";
 import { api } from "../api/client";
+import { useModal } from "../context/ModalContext";
+
 
 export default function CompanyProducts() {
   const { openSidebar } = useSidebar();
@@ -14,9 +16,11 @@ export default function CompanyProducts() {
   const [form, setForm] = useState({ product_name: "", quantity: 0 });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [q, setQ] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const filtered = products.filter((p) => !q || (p.product_name || "").toLowerCase().includes(q.toLowerCase()));
+  const { showModal } = useModal();
+  const filtered = products.filter(
+    (p) => !q || (p.product_name || "").toLowerCase().includes(q.toLowerCase()),
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -27,7 +31,8 @@ export default function CompanyProducts() {
         const data = await api.get(`/api/company/products/${id}`);
         setProducts(Array.isArray(data) ? data : []);
       } catch (error) {
-        setMessage(error.message || "Could not load products.");
+        showModal(error.message || "Could not load products.", { type: "error", title: "Error",
+           autoClose: true, autoCloseDelay: 2000, confirmText: false });
       } finally {
         setLoading(false);
       }
@@ -36,8 +41,17 @@ export default function CompanyProducts() {
     loadProducts();
   }, [id]);
 
-  const openAdd = () => { setEditing(null); setForm({ product_name: "", quantity: 0 }); setModalOpen(true); };
-  const openEdit = (prod) => { setEditing(prod); setForm({ product_name: prod.product_name, quantity: prod.quantity || 0 }); setModalOpen(true); };
+  const openAdd = () => {
+    setEditing(null);
+    setForm({ product_name: "", quantity: 0 , unit: ""});
+    setModalOpen(true);
+  };
+  const openEdit = (prod) => {
+    setEditing(prod);
+    setForm({ product_name: prod.product_name, quantity: prod.quantity || 0 , unit: prod.unit });
+    setModalOpen(true);
+  };
+
 
   const save = async (event) => {
     event.preventDefault();
@@ -49,23 +63,45 @@ export default function CompanyProducts() {
           company_id: id,
           product_name: form.product_name,
           quantity: Number(form.quantity || 0),
+          unit: form.unit
         });
-        setProducts((prev) => prev.map((p) => (p.id === editing.id ? { ...p, product_name: form.product_name, quantity: Number(form.quantity || 0) } : p)));
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === editing.id
+              ? {
+                  ...p,
+                  product_name: form.product_name,
+                  quantity: Number(form.quantity || 0),
+                  unit: form.unit 
+                }
+              : p,
+          ),
+        );
       } else {
         const created = await api.post(`/api/company/new-product`, {
           company_id: id,
           product_name: form.product_name,
           quantity: Number(form.quantity || 0),
+          unit: form.unit
         });
         setProducts((prev) => [
           ...prev,
-          { id: created.id, company_id: id, product_name: form.product_name, quantity: Number(form.quantity || 0), added_at: new Date().toISOString() },
+          {
+            id: created.id,
+            company_id: id,
+            product_name: form.product_name,
+            quantity: Number(form.quantity || 0),
+            unit: form.unit,
+            added_at: new Date().toISOString(),
+          },
         ]);
       }
       setModalOpen(false);
-      setMessage(editing ? "Product updated." : "Product added.");
+      showModal(editing ? "Product updated successfully." : "Product added successfully.",
+         { type: "success", title: "Success", autoClose: true , autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message || "Could not save product.");
+      showModal(error.message || "Could not save product.", { type: "error", 
+        title: "Error", autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -74,9 +110,11 @@ export default function CompanyProducts() {
       await api.del(`/api/company/products/${productId}`);
       setProducts((prev) => prev.filter((p) => p.id !== productId));
       setConfirmDeleteId(null);
-      setMessage("Product removed.");
+      showModal("Product removed.", { type: "info", title: "Info", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message || "Could not delete product.");
+      showModal(error.message || "Could not delete product.", { type: "error",
+         title: "Error", autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -97,7 +135,7 @@ export default function CompanyProducts() {
             addLabel="Add Product"
             onAdd={openAdd}
           />
-          {message && <div className="alert-brand-danger mx-3 mt-3" style={{ fontSize: "0.82rem" }}>{message}</div>}
+        
           <div className="table-responsive">
             <table className="table admin-table mb-0">
               <thead>
@@ -105,6 +143,7 @@ export default function CompanyProducts() {
                   <th>#</th>
                   <th>Product Name</th>
                   <th>Quantity</th>
+                  <th>Unit</th>
                   <th>Added At</th>
                   <th>Actions</th>
                 </tr>
@@ -112,32 +151,60 @@ export default function CompanyProducts() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="text-center text-muted-brand py-4">Loading products...</td>
+                    <td
+                      colSpan={6}
+                      className="text-center text-muted-brand py-4"
+                    >
+                      Loading products...
+                    </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center text-muted-brand py-4">No products yet.</td>
-                  </tr>
-                ) : filtered.map((c, i) => (
-                  <tr key={c.id}>
-                    <td className="text-muted-brand">{i + 1}</td>
-                    <td className="fw-medium">{c.product_name}</td>
-                    <td className="text-muted-brand">{c.quantity}</td>
-                    <td className="text-muted-brand">{c.created_at
-                        ? new Date(c.created_at).toLocaleDateString() + " " + new Date(c.created_at).toLocaleTimeString()
-                        : "-"}</td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <button className="btn btn-sm border-0 p-1" onClick={() => openEdit(c)} title="Edit">
-                          <i className="bi bi-pencil text-primary-brand" />
-                        </button>
-                        <button className="btn btn-sm border-0 p-1" onClick={() => setConfirmDeleteId(c.id)} title="Delete">
-                          <i className="bi bi-trash" style={{ color: "var(--color-danger)" }} />
-                        </button>
-                      </div>
+                    <td
+                      colSpan={6}
+                      className="text-center text-muted-brand py-4"
+                    >
+                      No products yet.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filtered.map((c, i) => (
+                    <tr key={c.id}>
+                      <td className="text-muted-brand">{i + 1}</td>
+                      <td className="fw-medium">{c.product_name}</td>
+                      <td className="text-muted-brand">{c.quantity}</td>
+                      <td className="text-muted-brand">{c.unit}</td>
+                      <td className="text-muted-brand">
+                        {c.created_at
+                          ? new Date(c.created_at).toLocaleDateString() +
+                            " " +
+                            new Date(c.created_at).toLocaleTimeString()
+                          : "-"}
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <button
+                            className="btn btn-sm border-0 p-1"
+                            onClick={() => openEdit(c)}
+                            title="Edit"
+                          >
+                            <i className="bi bi-pencil text-primary-brand" />
+                          </button>
+                          <button
+                            className="btn btn-sm border-0 p-1"
+                            onClick={() => setConfirmDeleteId(c.id)}
+                            title="Delete"
+                          >
+                            <i
+                              className="bi bi-trash"
+                              style={{ color: "var(--color-danger)" }}
+                            />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -148,33 +215,105 @@ export default function CompanyProducts() {
       </div>
 
       {modalOpen && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3" style={{ background: "rgba(14,46,28,0.4)", zIndex: 2000 }}>
-          <form onSubmit={save} className="card-surface p-4 w-100" style={{ maxWidth: 420 }}>
-            <p className="fw-semibold mb-3">{editing ? "Edit Product" : "Add Product"}</p>
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
+          style={{ background: "rgba(14,46,28,0.4)", zIndex: 2000 }}
+        >
+          <form
+            onSubmit={save}
+            className="card-surface p-4 w-100"
+            style={{ maxWidth: 420 }}
+          >
+            <p className="fw-semibold mb-3">
+              {editing ? "Edit Product" : "Add Product"}
+            </p>
             <div className="mb-3">
               <label className="form-label">Product Name *</label>
-              <input required className="form-control" value={form.product_name} onChange={(e) => setForm((f) => ({ ...f, product_name: e.target.value }))} placeholder="e.g. Textiles" />
+              <input
+                required
+                className="form-control"
+                value={form.product_name}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, product_name: e.target.value }))
+                }
+                placeholder="e.g. Textiles"
+              />
             </div>
             <div className="mb-4">
               <label className="form-label">Quantity *</label>
-              <input required className="form-control" type="number" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: parseInt(e.target.value) }))} placeholder="e.g. 100" />
+              <input
+                required
+                className="form-control"
+                type="number"
+                value={form.quantity}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, quantity: parseInt(e.target.value) }))
+                }
+                placeholder="e.g. 100"
+              />
+            </div>
+            <div className="mb-4">
+              <label htmlFor="unit">Unit *</label>
+              <select 
+               className="form-control"
+                type="text"
+                value={form.unit}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, unit: e.target.value }))
+                }
+               >
+                <option value="">-- Select Unit --</option>
+                <option value="pcs">Piece</option>
+                <option value="kg">Kilogram</option>
+                <option value="L">Litre</option>
+                <option value="pk">Pack</option>
+                <option value="bx">Box</option>
+                <option value="ctn">Carton</option>
+              </select>
             </div>
             <div className="d-flex justify-content-end gap-2">
-              <button type="button" className="btn btn-brand-outline rounded-3 px-3" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="submit" className="btn btn-brand rounded-3 px-3">Save</button>
+              <button
+                type="button"
+                className="btn btn-brand-outline rounded-3 px-3"
+                onClick={() => setModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-brand rounded-3 px-3">
+                Save
+              </button>
             </div>
           </form>
         </div>
       )}
 
       {confirmDeleteId !== null && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3" style={{ background: "rgba(14,46,28,0.4)", zIndex: 2000 }}>
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
+          style={{ background: "rgba(14,46,28,0.4)", zIndex: 2000 }}
+        >
           <div className="card-surface p-4 w-100" style={{ maxWidth: 380 }}>
             <p className="fw-semibold mb-2">Delete this product?</p>
-            <p className="text-muted-brand mb-3" style={{ fontSize: "0.88rem" }}>Companies in this category will need to be reassigned.</p>
+            <p
+              className="text-muted-brand mb-3"
+              style={{ fontSize: "0.88rem" }}
+            >
+              This action cannot be undone.
+            </p>
             <div className="d-flex gap-2 justify-content-end">
-              <button className="btn btn-brand-outline rounded-3" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
-              <button className="btn rounded-3 text-white" style={{ background: "var(--color-danger)" }} onClick={() => remove(confirmDeleteId)}>Delete</button>
+              <button
+                className="btn btn-brand-outline rounded-3"
+                onClick={() => setConfirmDeleteId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn rounded-3 text-white"
+                style={{ background: "var(--color-danger)" }}
+                onClick={() => remove(confirmDeleteId)}
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

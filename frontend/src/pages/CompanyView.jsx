@@ -7,6 +7,18 @@ import { useSidebar } from "../context/SidebarContext";
 import { api } from "../api/client";
 import { getCategory } from "../data/categories";
 
+function formatTimeToAmPm(value) {
+  if (!value) return "--";
+
+  const [hoursValue, minutesValue] = value.split(":");
+  const hours = Number(hoursValue);
+  const minutes = Number(minutesValue) || 0;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const normalizedHours = hours % 12 || 12;
+
+  return `${normalizedHours}:${String(minutes).padStart(2, "0")}${suffix}`;
+}
+
 export default function CompanyView() {
   const { openSidebar } = useSidebar();
   const navigate = useNavigate();
@@ -112,10 +124,43 @@ export default function CompanyView() {
                 <span className="fw-medium" style={{ color: cat.color, fontSize: "0.88rem" }}>{cat.name}</span>
 
                 <div className="d-flex flex-column gap-2 mt-3">
-                  <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-telephone" /> {company.phone}</div>
-                  <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-envelope" /> {company.email}</div>
-                  <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-geo-alt" /> {company.address}</div>
-                  <div className="d-flex align-items-center gap-2 text-muted-brand"><i className="bi bi-calendar3" /> Added {company.created_at ? new Date(company.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—"}</div>
+                  <div className="d-flex align-items-start gap-2 text-muted-brand">
+                    <i className="bi bi-telephone" />
+                    <span>{company.phone}</span>
+                  </div>
+                  <div className="d-flex align-items-start gap-2 text-muted-brand">
+                    <i className="bi bi-envelope" />
+                    <span>{company.email}</span>
+                  </div>
+                  <div className="d-flex align-items-start gap-2 text-muted-brand">
+                    <i className="bi bi-geo-alt" />
+                    <span>{company.address}</span>
+                  </div>
+                  <div className="d-flex align-items-start gap-2 text-muted-brand">
+                    <i className="bi bi-clock" />
+                    <div className="d-flex flex-wrap gap-2 ">
+                      {Array.isArray(company.working_hours) && company.working_hours.some((row) => row.days || row.openTime || row.closeTime) ? (
+                        company.working_hours.map((row, index) => {
+                          const timeRange = [row.openTime, row.closeTime].filter(Boolean).map((value) => formatTimeToAmPm(value)).join("-");
+                          const previewText = row.days ? `${row.days}${timeRange ? ` ${timeRange}` : ""}` : timeRange || "Untitled";
+
+                          return (
+                            <span
+                              key={`preview-${index}`}
+                            >
+                              {previewText}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        <span className="text-muted-brand" style={{ fontSize: "0.85rem" }}>No working hours saved yet.</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-start gap-2 text-muted-brand">
+                    <i className="bi bi-calendar3" />
+                    <span>Added {company.created_at ? new Date(company.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—"}</span>
+                  </div>
                 </div>
 
                 <p className="fw-semibold mt-4 mb-2">Description</p>

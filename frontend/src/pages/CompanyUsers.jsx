@@ -4,11 +4,13 @@ import TableToolbar from "../components/TableToolbar";
 import Avatar from "../components/Avatar";
 import { useSidebar } from "../context/SidebarContext";
 import { api } from "../api/client";
+import { useModal } from "../context/ModalContext";
 
 export default function CompanyUsers() {
   const { openSidebar } = useSidebar();
   const [users, setUsers] = useState([]); // Replace with actual data fetching logic
   const [q, setQ] = useState("");
+  const {showModal} = useModal();
   const [message, setMessage] = useState("");
 
   const fetchAdmins = async () => {
@@ -16,7 +18,8 @@ export default function CompanyUsers() {
      const admins = await api.get("/api/auth/company-admins");
       setUsers(Array.isArray(admins) ? admins : []);
     } catch (error) {
-      setMessage(error.response?.data?.message || error.message);
+       showModal(error.message || "Could not load users.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 

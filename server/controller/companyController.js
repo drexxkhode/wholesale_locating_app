@@ -151,12 +151,13 @@ exports.addCompany = async (req, res) => {
       address,
       latitude,
       longitude,
-      description
+      description,
+      working_hours
     } = req.body;
 
     const [result] = await db.query(
       `INSERT INTO companies
-      (company_name, phone, email, address, latitude, longitude, description)
+      (company_name, phone, email, address, latitude, longitude, description, working_hours)
       VALUES (?,?,?,?,?,?,?,?)`,
       [
         company_name,
@@ -165,7 +166,8 @@ exports.addCompany = async (req, res) => {
         address,
         latitude,
         longitude,
-        description
+        description,
+        working_hours || null
       ]
     );
 
@@ -192,6 +194,7 @@ exports.updateCompany = async (req, res) => {
       latitude,
       longitude,
       description,
+      working_hours,
       status,
       category_id
     } = req.body;
@@ -206,6 +209,7 @@ exports.updateCompany = async (req, res) => {
       latitude=?,
       longitude=?,
       description=?,
+      working_hours=?,
       status=?,
       category_id=?
       WHERE id=?`,
@@ -217,6 +221,7 @@ exports.updateCompany = async (req, res) => {
         latitude,
         longitude,
         description,
+        working_hours ?? null,
         status,
         category_id ?? null,
         id
@@ -260,11 +265,11 @@ exports.deleteCompany = async (req, res) => {
 //add a new product
 exports.addProduct = async (req, res) => {
   try {
-    const { company_id, product_name, quantity = 0 } = req.body;
+    const { company_id, product_name, quantity = 0, unit = "" } = req.body;
 
     const [result] = await db.query(
-      "INSERT INTO products (company_id, product_name, quantity) VALUES (?,?,?)",
-      [company_id, product_name, quantity]
+      "INSERT INTO products (company_id, product_name, quantity, unit) VALUES (?,?,?,?)",
+      [company_id, product_name, quantity, unit]
     );
 
     res.status(201).json({
@@ -282,13 +287,13 @@ exports.addProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { company_id, product_name, quantity = 0 } = req.body;
+    const { company_id, product_name, quantity = 0 , unit = ""} = req.body;
 
     const [result] = await db.query(
       `UPDATE products
-      SET company_id=?, product_name=?, quantity=?
+      SET company_id=?, product_name=?, quantity=?, unit=?
       WHERE id=?`,
-      [company_id, product_name, quantity, id]
+      [company_id, product_name, quantity, unit, id]
     );
 
     if (!result.affectedRows) {
@@ -306,7 +311,8 @@ exports.updateProduct = async (req, res) => {
 exports.getProducts = async (req, res) => {
   try {
     const company_id = req.params?.company_id;
-    const [rows] = await db.query(`SELECT * FROM products 
+    const [rows] = await db.query(`
+      SELECT * FROM products 
       WHERE company_id = ?
       `, [company_id]);
     res.json(rows);

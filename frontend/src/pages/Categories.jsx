@@ -5,8 +5,12 @@ import TableToolbar from "../components/TableToolbar";
 import { useSidebar } from "../context/SidebarContext";
 import { api } from "../api/client";
 import { categories as seedCategories } from "../data/categories";
+import { useModal } from "../context/ModalContext";
 //import { iconOptions } from "../data/icons";
-const iconOptions = ["bi-house-door-fill", "bi-lightning-charge-fill", "bi-bag-fill", "bi-gear-fill", "bi-box-seam-fill", "bi-grid-fill", "bi-cup-hot-fill", "bi-truck"]; 
+const iconOptions = ["bi-house-door-fill", "bi-lightning-charge-fill",
+   "bi-bag-fill", "bi-gear-fill",
+    "bi-box-seam-fill", "bi-grid-fill", 
+    "bi-cup-hot-fill", "bi-truck"]; 
 
 function normalizeCategory(item) {
   return {
@@ -16,7 +20,7 @@ function normalizeCategory(item) {
     slug: (item.category_name || item.name || "").toLowerCase().replace(/\s+/g, "-"),
     color: item.color || seedCategories.find((entry) => entry.name.toLowerCase() === (item.category_name || item.name || "").toLowerCase() || entry.slug === (item.category_name || item.name || "").toLowerCase().replace(/\s+/g, "-"))?.color || "#1c6b41",
     bg: item.bg || seedCategories.find((entry) => entry.name.toLowerCase() === (item.category_name || item.name || "").toLowerCase() || entry.slug === (item.category_name || item.name || "").toLowerCase().replace(/\s+/g, "-"))?.bg || "#e8f5ec",
-    companies: item.companies || 0,
+    companies: item.company_count || 0,
     status: item.status || "Active",
   };
 }
@@ -29,8 +33,8 @@ export default function Categories() {
   const [form, setForm] = useState({ name: "", icon: iconOptions[0] });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [q, setQ] = useState("");
+  const {showModal} = useModal();
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
   const filtered = categories.filter(
     (c) => !q || c.name.toLowerCase().includes(q.toLowerCase()),
   );
@@ -42,7 +46,8 @@ export default function Categories() {
         const rows = await api.get("/api/company/categories");
         setCategories(Array.isArray(rows) ? rows.map(normalizeCategory) : []);
       } catch (error) {
-        setMessage(error.message || "Could not load categories.");
+         showModal(error.message || "Could not load categories.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       } finally {
         setLoading(false);
       }
@@ -82,9 +87,9 @@ export default function Categories() {
         setCategories((prev) => [normalizeCategory(payload), ...prev]);
       }
       setModalOpen(false);
-      setMessage("");
     } catch (error) {
-      setMessage(error.message || "Could not save category.");
+       showModal(error.message || "Could not save category.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -93,9 +98,9 @@ export default function Categories() {
       await api.del(`/api/company/categories/${id}`);
       setCategories((prev) => prev.filter((c) => c.id !== id));
       setConfirmDeleteId(null);
-      setMessage("");
     } catch (error) {
-      setMessage(error.message || "Could not delete category.");
+       showModal(error.message || "Could not delete  category.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -116,7 +121,6 @@ export default function Categories() {
             addLabel="Add Category"
             onAdd={openAdd}
           />
-          {message && <div className="alert-brand-danger mx-3 mt-3" style={{ fontSize: "0.82rem" }}>{message}</div>}
           <div className="table-responsive">
             <table className="table admin-table mb-0">
               <thead>

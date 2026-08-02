@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import Topbar from "../components/Topbar";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
+import { useModal } from "../context/ModalContext";
 
 const tabs = ["Profile", "Change Password"];
 // Renders a date string as "July 31, 2026". Falls back to "—" if the
@@ -93,6 +94,7 @@ export default function CompanySettings() {
   const { openSidebar } = useSidebar();
   const { user, updateCurrentUser } = useAuth();
   const photoInputRef = useRef(null);
+  const {showModal} = useModal();
   const [tab, setTab] = useState("Profile");
   const [editingField, setEditingField] = useState(null);
   const [profileUser, setProfileUser] = useState(null);
@@ -101,18 +103,15 @@ export default function CompanySettings() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemovingPhoto, setIsRemovingPhoto] = useState(false);
-  const [message, setMessage] = useState("");
   const [dbSize, setDbSize] = useState([]);
   const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
-   const [showPw, setShowPw] = useState(false);
-   const[saving, setSaving] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const[saving, setSaving] = useState(false);
   const [showPwd, setShowPwd] = useState({
     current: false,
     next: false,
     confirm: false,
   });
-  const [err, setErr] = useState("");
-  const [success, setSuccess] = useState("");
   const [system, setSystem] = useState({
     id: "",
     system_name: "",
@@ -128,35 +127,24 @@ const handle = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
   const handlePwd = (f) => (e) =>
     setPwd((p) => ({ ...p, [f]: e.target.value }));
   const toggleShow = (f) => () => setShowPwd((p) => ({ ...p, [f]: !p[f] }));
-  const clearMsgs = () => {
-    setErr("");
-    setSuccess("");
-  };
-
-  // Auto-dismiss messages after 4 seconds
-  useEffect(() => {
-    if (!err && !success && !message) return;
-    const t = setTimeout(() => {
-      setErr("");
-      setSuccess("");
-      setMessage("");
-    }, 4000);
-    return () => clearTimeout(t);
-  }, [err, success, message]);
-
+  
+  
   //── Change password ─────────────────────────────────────────────────────
   const changePassword = async () => {
-    clearMsgs();
+  
     if (!pwd.current) {
-      setErr("Enter your current password");
+       showModal("Enter your current password.", { type: "warning", title: "Warning", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       return;
     }
     if (pwd.next.length < 6) {
-      setErr("New password must be at least 6 characters");
+       showModal("New password must be at least 6 characters.", { type: "warning", title: "Warning", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       return;
     }
     if (pwd.next !== pwd.confirm) {
-      setErr("New passwords do not match");
+       showModal("New passwords do not match.", { type: "warning", title: "Warning", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       return;
     }
     try {
@@ -169,9 +157,11 @@ const handle = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
 
       setSaving(false);
       setPwd({ current: "", next: "", confirm: "" });
-      setSuccess("Password changed successfully!");
+       showModal("Password changed successfully.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (e) {
-      setErr(e.message ?? "Failed to change password");
+       showModal(e.message ?? "Failed to change password.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } finally {
       setSaving(false);
     }
@@ -188,9 +178,11 @@ const handle = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
           ? admins.find((admin) => String(admin.id) === String(user.id))
           : null;
         if (currentAdmin) setProfileUser(currentAdmin);
-        else setMessage("Your profile could not be found.");
+        else showModal("Your profile could not be found.", { type: "warning", title: "Warning", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });;
       })
-      .catch((error) => setMessage(error.message));
+      .catch((error) => showModal(error.message || "Something went wrong.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false }));
   }, [user?.id]);
 
   useEffect(() => {
@@ -216,7 +208,7 @@ const handle = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
 
     setSelectedPhoto(file);
     setPhotoPreview(URL.createObjectURL(file));
-    setMessage("");
+
   };
 
   const clearSelectedPhoto = () => {
@@ -229,7 +221,6 @@ const handle = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
     if (!user?.id) return;
 
     setIsSaving(true);
-    setMessage("");
     try {
       const formData = new FormData();
       formData.append("name", profile.name);
@@ -243,9 +234,11 @@ const handle = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
       setProfileUser(data.admin);
       clearSelectedPhoto();
       setEditingField(null);
-      setMessage("Profile updated successfully.");
+       showModal("Profile updated successfully.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message);
+      setMessage(error.message); showModal("Something went wrong.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } finally {
       setIsSaving(false);
     }
@@ -255,14 +248,16 @@ const handle = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
     if (!user?.id || !user.photo) return;
 
     setIsRemovingPhoto(true);
-    setMessage("");
     try {
       const data = await api.del(`/api/auth/admins/${user.id}/photo`);
       updateCurrentUser(data.admin);
       setProfileUser(data.admin);
-      setMessage("Profile photo removed.");
+       showModal("Profile photo removed.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
       setMessage(error.message);
+       showModal("Something went wrong.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } finally {
       setIsRemovingPhoto(false);
     }
@@ -376,7 +371,6 @@ console.error(e)
                  
                 </div>
 
-                {message && <p className={`mt-3 mb-0 ${message.includes("successfully") || message.includes("removed") ? "text-success" : "text-danger"}`}>{message}</p>}
                 <button type="button" className="btn btn-brand rounded-3 mt-4 px-4" onClick={handleSave} disabled={isSaving}>
                   {isSaving ? "Updating..." : "Update Profile"}
                 </button>
@@ -511,11 +505,6 @@ console.error(e)
                 </div>
               )}
 
-              {err && <div className="alert alert-danger py-2 mb-0">{err}</div>}
-
-              {success && (
-                <div className="alert alert-success py-2 mb-0">{success}</div>
-              )}
 
               <button
                 className="btn btn-brand rounded-3 px-4"

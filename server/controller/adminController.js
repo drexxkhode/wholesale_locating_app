@@ -415,11 +415,11 @@ exports.getAllCompanyAdmins = async (req, res) => {
 exports.getAllCompanies = async (req, res) => {
   try {
     const admin_role = req.auth?.role === "super_admin";
-    if (!admin_role) return res.status(401).json({ message: "Unauthorized" });
+    if (!admin_role) return res.status(403).json({ message: "Super admin access required" });
 
     const [rows] = await db.query(
       `SELECT c.id, c.company_name, c.phone,
-              c.email, c.address, c.latitude, c.longitude, c.description, c.status, c.created_at,
+              c.email, c.address, c.latitude, c.longitude,c.working_hours, c.description, c.status, c.created_at,
               g.category_name AS category_name, g.id AS cat_id,
               (
                 SELECT COUNT(*) FROM products
@@ -474,6 +474,7 @@ exports.getMyCompanyDetails = async (req, res) => {
         c.address,
         c.latitude,
         c.longitude,
+        c.working_hours,
         c.description,
         c.status,
         c.created_at,
@@ -564,9 +565,9 @@ exports.getCompanyName = async (req, res) => {
 // ──Super Admin: dashboard stats ─────────────────────────────────────────────────
 exports.getDashboardDetails = async (req, res) => {
   try {
-    const superId = req.auth?.id;
-    if (!superId)
-      return res.status(403).json({ message: "Admin access required" });
+    if (req.auth?.role !== "super_admin") {
+      return res.status(403).json({ message: "Super admin access required" });
+    }
 
     const [rows] = await db.query(
       `SELECT 

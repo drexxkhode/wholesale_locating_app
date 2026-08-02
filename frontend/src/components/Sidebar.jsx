@@ -52,21 +52,21 @@ export default function Sidebar({
 }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [systemLogo, setSystemLogo] = useState(null);
+  const [systemDetail, setSystemDetail] = useState({});
   useEffect(() => {
-  const getLogo = async () => {
+  const getSystemDetail = async () => {
     try {
-      const log = await api.get("/api/system/logo");
-      setSystemLogo(log.system_logo);
+      const detail = await api.get("/api/system/sys-details");
+      setSystemDetail(detail);
     } catch (e) {
       console.error(e);
     }
   };
-  getLogo();
+  getSystemDetail();
 
-  const onUpdate = (e) => setSystemLogo(e.detail);
-  window.addEventListener("system-logo-updated", onUpdate);
-  return () => window.removeEventListener("system-logo-updated", onUpdate);
+  const onUpdate = (e) => setSystemDetail(e.detail);
+  window.addEventListener("system-details-updated", onUpdate);
+  return () => window.removeEventListener("system-details-updated", onUpdate);
 }, []);
 
   const isCompanyUser =
@@ -98,7 +98,7 @@ export default function Sidebar({
         <div className="d-flex align-items-center gap-2 px-3 py-4 sidebar-brand-row">
           <span className="sidebar-logo-wrap flex-shrink-0">
             <img
-              src={systemLogo || logo}
+              src={systemDetail?.system_logo || logo}
               alt="North Industrial Area Wholesale Locator"
               className="sidebar-logo"
             />
@@ -108,13 +108,13 @@ export default function Sidebar({
               className="fw-bold text-white"
               style={{ fontSize: "0.85rem" }}
             >
-              NORTH INDUSTRIAL AREA
+              {systemDetail?.system_name || "NORTH INDUSTRIAL AREA"}
             </span>
             <span style={{ fontSize: "0.68rem", color: "var(--sidebar-text)" }}>
               {user?.role === "warehouse_manager" ||
               user?.role === "warehouse_user"
-                ? "Wholesale Locator · Company"
-                : "Wholesale Locator · Administrator"}
+                ? `${systemDetail?.other_name || "Wholesale Locator"} · Warehouse`
+                : `${systemDetail?.other_name || "Wholesale Locator"} · Administrator`}
             </span>
           </div>
         </div>

@@ -18,6 +18,7 @@ import CompanySettings from "./pages/CompanySettings";
 import CompanyDetails from "./pages/CompanyDetails";
 import CompanyProducts from "./pages/CompanyProducts";
 import MaintenancePage from "./pages/Maintenance";
+import Register from "./pages/Register";
 
 function MyWarehouseRedirect() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ export default function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Navigate to="/login" replace />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
         <Route
           element={

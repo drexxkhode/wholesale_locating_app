@@ -32,14 +32,23 @@ export default function WarehouseDashboard() {
     const loadDashboard = async () => {
       try {
         setLoading(true);
-        const [statsRes, companiesRes, categoriesRes] = await Promise.all([
-          api.get("/api/auth/dashboard"),
-          api.get("/api/auth/companies"),
-          api.get("/api/company/categories")
-        ]);
-        setStats(statsRes || {});
-        setCompanyRows(Array.isArray(companiesRes) ? companiesRes : []);
-        setCategoryRows(Array.isArray(categoriesRes) ? categoriesRes : []);
+
+        if (isAdmin) {
+          const [statsRes, companiesRes, categoriesRes] = await Promise.all([
+            api.get("/api/auth/dashboard"),
+            api.get("/api/auth/companies"),
+            api.get("/api/company/categories")
+          ]);
+
+          setStats(statsRes || {});
+          setCompanyRows(Array.isArray(companiesRes) ? companiesRes : []);
+          setCategoryRows(Array.isArray(categoriesRes) ? categoriesRes : []);
+        } else {
+          const categoriesRes = await api.get("/api/company/categories");
+          setStats({ total_companies: 0, total_categories: Array.isArray(categoriesRes) ? categoriesRes.length : 0, total_products: 0, total_users: 0 });
+          setCompanyRows([]);
+          setCategoryRows(Array.isArray(categoriesRes) ? categoriesRes : []);
+        }
       } catch (error) {
         setDashboardMessage(error.message || "Could not load dashboard data.");
       } finally {

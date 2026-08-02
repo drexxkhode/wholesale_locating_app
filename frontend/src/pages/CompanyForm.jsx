@@ -6,6 +6,7 @@ import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 import { categories, getCategory, getCategoryValue } from "../data/categories";
 import { api } from "../api/client";
+import { useModal } from "../context/ModalContext";
 
 const COMPANY_MANAGEMENT_ROLES = ["super_admin", "warehouse_manager", "warehouse_user"];
 
@@ -27,7 +28,6 @@ export default function CompanyForm() {
   const fileInputRef = useRef(null);
   const [companyDetails, setCompanyDetails] = useState(null);
   const [loadingCompany, setLoadingCompany] = useState(Boolean(id));
-  const [message, setMessage] = useState("");
 
   // A "company" account may only ever edit its own linked company record.
   const isOwnCompany = user?.role === "super_admin" || (COMPANY_MANAGEMENT_ROLES.includes(user?.role) && String(user.companyId) === String(companyId));
@@ -49,9 +49,7 @@ export default function CompanyForm() {
   });
   const [pin, setPin] = useState(null);
   const [locating, setLocating] = useState(false);
-  const [locationError, setLocationError] = useState("");
   const [images, setImages] = useState([]);
-  const [saved, setSaved] = useState(false);
   const [editableFields, setEditableFields] = useState({});
 
   useEffect(() => {
@@ -90,7 +88,8 @@ export default function CompanyForm() {
         setImages(Array.isArray(imageResponse?.images) ? imageResponse.images.map((image) => ({ ...image, previewUrl: image.url })) : []);
       })
       .catch((error) => {
-        if (!ignore) setMessage(error.message || "Could not load company details.");
+        if (!ignore) showModal(error.message || "Could not load company details.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       })
       .finally(() => {
         if (!ignore) setLoadingCompany(false);
@@ -102,6 +101,9 @@ export default function CompanyForm() {
   }, [companyId, isEdit, isOwnCompany, user?.id, user?.role, user?.companyId, navigate, location.pathname]);
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const isCreateMode = !isEdit;
+
+  const canEditField = (field) => isCreateMode || editableFields[field];
 
   const toggleFieldEdit = (field) => {
     setEditableFields((prev) => ({ ...prev, [field]: !prev[field] }));
@@ -109,18 +111,19 @@ export default function CompanyForm() {
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError("Geolocation isn't supported on this device/browser.");
+      showModal( "Geolocation isn't supported on this device/browser.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       return;
     }
     setLocating(true);
-    setLocationError("");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setPin([pos.coords.latitude, pos.coords.longitude]);
         setLocating(false);
       },
       (err) => {
-        setLocationError(err.message || "Couldn't get your location. Check location permissions.");
+        showModal(err.message || "Couldn't get your location. Check location permission", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -163,11 +166,12 @@ export default function CompanyForm() {
           )
         );
       }
-
-      setMessage("Images uploaded successfully.");
+      showModal("Images uploaded successfully.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
       setImages((prev) => prev.filter((item) => !pendingImages.some((pending) => pending.key === item.key)));
-      setMessage(error.message || "Image upload failed.");
+      showModal(error.message || "Image upload failed.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } finally {
       event.target.value = "";
     }
@@ -182,13 +186,15 @@ export default function CompanyForm() {
       try {
         await api.del(`/api/company/${companyId}/images/${image.id}`);
       } catch (error) {
-        setMessage(error.message || "Could not delete image.");
+        showModal(error.message || "Could not delete image.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
         return;
       }
     }
 
     setImages((prev) => prev.filter((item) => item.key !== image.key && item.id !== image.id));
-    setMessage("Image removed.");
+  showModal("Image removed.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
   };
 
   const deleteAllImages = async () => {
@@ -197,9 +203,11 @@ export default function CompanyForm() {
     try {
       await Promise.all(images.filter((image) => image.id).map((image) => api.del(`/api/company/${companyId}/images/${image.id}`)));
       setImages([]);
-      setMessage("All images removed.");
+      showModal("All images removed.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message || "Could not delete all images.");
+      showModal(error.message || "Could not delete all images.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -209,9 +217,11 @@ export default function CompanyForm() {
     try {
       await api.put(`/api/company/${companyId}/images/${image.id}/cover`);
       setImages((prev) => prev.map((item) => ({ ...item, is_cover: item.id === image.id })));
-      setMessage("Cover image updated.");
+      showModal("Cover image updated.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message || "Could not update cover image.");
+      showModal(error.message || "Could not update cover image.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -257,24 +267,28 @@ export default function CompanyForm() {
                   <div className="col-sm-6">
                     <label className="form-label">Company Name *</label>
                     <div className="input-group">
-                      <input required className="form-control" placeholder="Enter company name" value={form.name} onChange={update("name")} disabled={!editableFields.name} />
-                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("name")} title="Edit field">
-                        <i className="bi bi-pencil" />
-                      </button>
+                      <input required className="form-control" placeholder="Enter company name" value={form.name} onChange={update("name")} disabled={!canEditField("name")} />
+                      {!isCreateMode && (
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("name")} title="Edit field">
+                          <i className="bi bi-pencil" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="col-sm-6">
                     <label className="form-label">Category *</label>
                     <div className="input-group">
-                      <select required className="form-select" value={form.category} onChange={update("category")} disabled={!editableFields.category}>
+                      <select required className="form-select" value={form.category} onChange={update("category")} disabled={!canEditField("category")}>
                         <option value="">Select category</option>
                         {categories.map((c) => (
                           <option key={c.slug} value={c.slug}>{c.name}</option>
                         ))}
                       </select>
-                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("category")} title="Edit field">
-                        <i className="bi bi-pencil" />
-                      </button>
+                      {!isCreateMode && (
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("category")} title="Edit field">
+                          <i className="bi bi-pencil" />
+                        </button>
+                      )}
                     </div>
                     {companyDetails?.cat_id && !form.category && (
                       <small className="text-muted-brand">Current category: {getCategory(companyDetails.cat_id)?.name || companyDetails.category_name}</small>
@@ -283,28 +297,34 @@ export default function CompanyForm() {
                   <div className="col-sm-6">
                     <label className="form-label">Phone *</label>
                     <div className="input-group">
-                      <input required className="form-control" placeholder="Enter phone number" value={form.phone} onChange={update("phone")} disabled={!editableFields.phone} />
-                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("phone")} title="Edit field">
-                        <i className="bi bi-pencil" />
-                      </button>
+                      <input required className="form-control" placeholder="Enter phone number" value={form.phone} onChange={update("phone")} disabled={!canEditField("phone")} />
+                      {!isCreateMode && (
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("phone")} title="Edit field">
+                          <i className="bi bi-pencil" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="col-sm-6">
                     <label className="form-label">Email</label>
                     <div className="input-group">
-                      <input type="email" className="form-control" placeholder="Enter email address" value={form.email} onChange={update("email")} disabled={!editableFields.email} />
-                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("email")} title="Edit field">
-                        <i className="bi bi-pencil" />
-                      </button>
+                      <input type="email" className="form-control" placeholder="Enter email address" value={form.email} onChange={update("email")} disabled={!canEditField("email")} />
+                      {!isCreateMode && (
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("email")} title="Edit field">
+                          <i className="bi bi-pencil" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="col-12">
                     <label className="form-label">Address *</label>
                     <div className="input-group">
-                      <input required className="form-control" placeholder="Enter full address" value={form.address} onChange={update("address")} disabled={!editableFields.address} />
-                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("address")} title="Edit field">
-                        <i className="bi bi-pencil" />
-                      </button>
+                      <input required className="form-control" placeholder="Enter full address" value={form.address} onChange={update("address")} disabled={!canEditField("address")} />
+                      {!isCreateMode && (
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => toggleFieldEdit("address")} title="Edit field">
+                          <i className="bi bi-pencil" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -330,7 +350,7 @@ export default function CompanyForm() {
                   </button>
                 </div>
                 <p className="text-muted-brand mb-2" style={{ fontSize: "0.82rem" }}>
-                  Stand at the company's location and tap the button — the map below just previews the pin.
+                  Stand at the company's location and tap the button to automatically set the map pin to your current location.
                 </p>
                 {locationError && (
                   <div className="alert-brand-danger mb-2" style={{ fontSize: "0.8rem" }}>
@@ -371,7 +391,7 @@ export default function CompanyForm() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-muted-brand" style={{ fontSize: "0.85rem" }}>Add products to preview them here.</span>
+                      <span className="text-muted-brand" style={{ fontSize: "0.85rem" }}>No products or services added.</span>
                     )}
                   </div>
                 </div>
@@ -385,8 +405,6 @@ export default function CompanyForm() {
                   {images.length > 0 && <span className="text-muted-brand" style={{ fontSize: "0.8rem" }}>{images.length} images</span>}
                 </div>
 
-                {message && <div className="alert-brand-danger mb-3" style={{ fontSize: "0.82rem" }}>{message}</div>}
-
                 <div
                   className="upload-dropzone py-4"
                   style={{ minHeight: 120 }}
@@ -394,12 +412,12 @@ export default function CompanyForm() {
                 >
                   <i className="bi bi-images text-muted-brand mb-2" style={{ fontSize: "1.6rem" }} />
                   <p className="fw-semibold mb-1" style={{ fontSize: "0.9rem" }}>Click to add images</p>
-                  <p className="text-muted-brand mb-0" style={{ fontSize: "0.78rem" }}>PNG or JPG, multiple allowed</p>
+                  <p className="text-muted-brand mb-0" style={{ fontSize: "0.78rem" }}>PNG, JPG, WEBP, multiple allowed</p>
                 </div>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/png, image/jpeg"
+                  accept="image/png, image/jpeg, image/webp"
                   multiple
                   className="d-none"
                   onChange={onFilesChosen}
@@ -447,7 +465,6 @@ export default function CompanyForm() {
           </div>
 
           <div className="d-flex justify-content-end gap-2 flex-wrap">
-            {saved && <span className="text-primary-brand fw-semibold align-self-center me-auto"><i className="bi bi-check-circle-fill me-1" />Saved!</span>}
             <button type="button" className="btn btn-brand-outline rounded-3 px-4" onClick={() => navigate(COMPANY_MANAGEMENT_ROLES.includes(user?.role) ? "/my-company" : "/companies")}>Cancel</button>
             <button type="submit" className="btn btn-brand rounded-3 px-4">
               <i className="bi bi-save me-2" /> Save Company

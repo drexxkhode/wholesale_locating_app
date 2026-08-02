@@ -6,6 +6,7 @@ import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 import { categories, getCategory, getCategoryValue } from "../data/categories";
 import { api } from "../api/client";
+import { useModal } from "../context/ModalContext";
 
 const COMPANY_MANAGEMENT_ROLES = ["super_admin", "warehouse_manager", "warehouse_user"];
 
@@ -14,6 +15,61 @@ function parseProducts(value = "") {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function parseWorkingHours(value) {
+  if (!value) {
+    return [{ days: "", openTime: "", closeTime: "" }];
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => ({
+      days: entry?.days || entry?.day || "",
+      openTime: entry?.openTime || entry?.from || entry?.open || "",
+      closeTime: entry?.closeTime || entry?.to || entry?.close || "",
+    }));
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return [{ days: "", openTime: "", closeTime: "" }];
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((entry) => ({
+          days: entry?.days || entry?.day || "",
+          openTime: entry?.openTime || entry?.from || entry?.open || "",
+          closeTime: entry?.closeTime || entry?.to || entry?.close || "",
+        }));
+      }
+    } catch {
+      // If the saved value is plain text, fall back to a single row with the text in days.
+    }
+
+    return [{ days: trimmed, openTime: "", closeTime: "" }];
+  }
+
+  return [{ days: "", openTime: "", closeTime: "" }];
+}
+
+function serializeWorkingHours(rows) {
+  return JSON.stringify(rows.filter((row) => row.days || row.openTime || row.closeTime));
+}
+
+function formatTimeToAmPm(value) {
+  if (!value) return "--";
+
+  const [hoursValue, minutesValue] = value.split(":");
+  const hours = Number(hoursValue);
+  const minutes = Number(minutesValue) || 0;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const normalizedHours = hours % 12 || 12;
+
+  return `${normalizedHours}:${String(minutes).padStart(2, "0")}${suffix}`;
 }
 
 export default function CompanyDetails() {
@@ -27,7 +83,7 @@ export default function CompanyDetails() {
   const fileInputRef = useRef(null);
   const [companyDetails, setCompanyDetails] = useState(null);
   const [loadingCompany, setLoadingCompany] = useState(Boolean(id));
-  const [message, setMessage] = useState("");
+  const {showModal} = useModal();
 
   // A "company" account may only ever edit its own linked company record.
   const isOwnCompany = user?.role === "super_admin" || (COMPANY_MANAGEMENT_ROLES.includes(user?.role) && String(user.companyId) === String(companyId));
@@ -53,6 +109,7 @@ export default function CompanyDetails() {
   const [images, setImages] = useState([]);
   const [saved, setSaved] = useState(false);
   const [editableFields, setEditableFields] = useState({});
+  const [workingHours, setWorkingHours] = useState([{ days: "", openTime: "", closeTime: "" }]);
 
   useEffect(() => {
     if (!companyId || !user) return;
@@ -86,11 +143,16 @@ export default function CompanyDetails() {
           description: company?.description || "",
           products: productNames.join(", "),
         });
+        const savedWorkingHours = company?.working_hours || company?.working_days_hours || company?.working_days_and_hours;
+        setWorkingHours(parseWorkingHours(savedWorkingHours));
         setPin(company?.latitude && company?.longitude ? [Number(company.latitude), Number(company.longitude)] : null);
         setImages(Array.isArray(imageResponse?.images) ? imageResponse.images.map((image) => ({ ...image, previewUrl: image.url })) : []);
       })
       .catch((error) => {
-        if (!ignore) setMessage(error.message || "Could not load company details.");
+        if (!ignore){
+          showModal(error.message || "Could not load company deatils.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
+      };
       })
       .finally(() => {
         if (!ignore) setLoadingCompany(false);
@@ -103,24 +165,37 @@ export default function CompanyDetails() {
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
+  const updateWorkingHour = (index, field, value) => {
+    setWorkingHours((prev) => prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row)));
+  };
+
+  const addWorkingHourRow = () => {
+    setWorkingHours((prev) => [...prev, { days: "", openTime: "", closeTime: "" }]);
+  };
+
+  const removeWorkingHourRow = (index) => {
+    setWorkingHours((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
+  };
+
   const toggleFieldEdit = (field) => {
     setEditableFields((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError("Geolocation isn't supported on this device/browser.");
+      showModal("Geolocation isn't supported on this device/browser.", { type: "error", title: "Warning", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       return;
     }
     setLocating(true);
-    setLocationError("");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setPin([pos.coords.latitude, pos.coords.longitude]);
         setLocating(false);
       },
       (err) => {
-        setLocationError(err.message || "Couldn't get your location. Check location permissions.");
+        showModal(err.message || "Couldn't get your location. Check location permissions.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 3000, confirmText: false });
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -139,8 +214,7 @@ export default function CompanyDetails() {
     }));
 
     setImages((prev) => [...prev, ...pendingImages]);
-    setMessage("");
-
+   
     try {
       for (const item of pendingImages) {
         if (!companyId) {
@@ -164,10 +238,12 @@ export default function CompanyDetails() {
         );
       }
 
-      setMessage("Images uploaded successfully.");
+      showModal("Image(s) uploaded successfully .", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
       setImages((prev) => prev.filter((item) => !pendingImages.some((pending) => pending.key === item.key)));
-      setMessage(error.message || "Image upload failed.");
+    showModal(error.message || "Image upload failed.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } finally {
       event.target.value = "";
     }
@@ -182,13 +258,15 @@ export default function CompanyDetails() {
       try {
         await api.del(`/api/company/${companyId}/images/${image.id}`);
       } catch (error) {
-        setMessage(error.message || "Could not delete image.");
+        setMessage(error.message || "Could not delete image.");showModal(error.message || "Could not delete image(s).", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
         return;
       }
     }
 
     setImages((prev) => prev.filter((item) => item.key !== image.key && item.id !== image.id));
-    setMessage("Image removed.");
+    showModal("Image removed.", { type: "warning", title: "Message", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
   };
 
   const deleteAllImages = async () => {
@@ -197,9 +275,11 @@ export default function CompanyDetails() {
     try {
       await Promise.all(images.filter((image) => image.id).map((image) => api.del(`/api/company/${companyId}/images/${image.id}`)));
       setImages([]);
-      setMessage("All images removed.");
+      showModal("All images removed.", { type: "success", title: "Message", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message || "Could not delete all images.");
+      showModal(error.message || "Could not delete all images.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -209,9 +289,11 @@ export default function CompanyDetails() {
     try {
       await api.put(`/api/company/${companyId}/images/${image.id}/cover`);
       setImages((prev) => prev.map((item) => ({ ...item, is_cover: item.id === image.id })));
-      setMessage("Cover image updated.");
+      showModal("Cover image updated", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     } catch (error) {
-      setMessage(error.message || "Could not update cover image.");
+      showModal(error.message || "Could not update cover image.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -225,7 +307,8 @@ export default function CompanyDetails() {
     e.preventDefault();
 
     if (!companyId) {
-      setMessage("Company id is missing.");
+      showModal("Company ID missing .", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       return;
     }
 
@@ -238,14 +321,16 @@ export default function CompanyDetails() {
         latitude: pin ? pin[0] : null,
         longitude: pin ? pin[1] : null,
         description: form.description,
+        working_hours: serializeWorkingHours(workingHours),
         status: companyDetails?.status || "Active",
       });
 
-      setSaved(true);
-      setMessage("");
+      showModal("Saved.", { type: "success", title: "Success", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
       setTimeout(() => navigate(COMPANY_MANAGEMENT_ROLES.includes(user?.role) ? "/my-company" : "/companies"), 900);
     } catch (error) {
-      setMessage(error.message || "Could not save company details.");
+      showModal(error.message || "Could not save company details.", { type: "error", title: "Error", 
+        autoClose: true, autoCloseDelay: 2000, confirmText: false });
     }
   };
 
@@ -346,7 +431,7 @@ export default function CompanyDetails() {
                   </button>
                 </div>
                 <p className="text-muted-brand mb-2" style={{ fontSize: "0.82rem" }}>
-                  Stand at the company's location and tap the button — the map below just previews the pin.
+                  Stand at the company's location and tap the button to automatically set the map pin to your current location.
                 </p>
                 {locationError && (
                   <div className="alert-brand-danger mb-2" style={{ fontSize: "0.8rem" }}>
@@ -376,17 +461,101 @@ export default function CompanyDetails() {
                   <label className="form-label">Description</label>
                   <textarea className="form-control" rows={4} placeholder="Enter company description..." value={form.description} onChange={update("description")} />
                 </div>
-                 <div className="d-flex flex-wrap gap-2 mt-3">
-                    {productList.length > 0 ? (
-                      productList.map((product) => (
-                        <span key={product} className="badge rounded-pill" style={{ background: "var(--color-bg)", color: "var(--color-primary)", border: "1px solid var(--color-border)", padding: "0.5rem 0.7rem" }}>
-                          {product}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-muted-brand" style={{ fontSize: "0.85rem" }}>Add products to preview them here.</span>
-                    )}
+
+                <div className="mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <label className="form-label mb-0">Working Days & Hours</label>
+                    <button type="button" className="btn btn-sm btn-brand-outline rounded-3" onClick={addWorkingHourRow}>
+                      <i className="bi bi-plus-lg me-1" /> Append
+                    </button>
                   </div>
+                  <div className="mb-3">
+                    
+                      {workingHours.some((row) => row.days || row.openTime || row.closeTime) ? (
+                        <div className="d-flex flex-wrap gap-2 mt-2">
+                          {workingHours.map((row, index) => {
+                            const timeRange = [row.openTime, row.closeTime].filter(Boolean).map((value) => formatTimeToAmPm(value)).join("-");
+                            const previewText = row.days ? `${row.days}${timeRange ? ` ${timeRange}` : ""}` : timeRange || "Untitled";
+
+                            return (
+                              <span
+                                key={`preview-${index}`}
+                                className="badge rounded-pill"
+                                style={{
+                                  background: "var(--color-bg)",
+                                  color: "var(--color-primary)",
+                                  border: "1px solid var(--color-border)",
+                                  padding: "0.5rem 0.7rem",
+                                  textAlign: "left",
+                                  whiteSpace: "normal",
+                                  display: "inline-flex",
+                                  justifyContent: "flex-start",
+                                }}
+                              >
+                                {previewText}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-muted-brand" style={{ fontSize: "0.85rem" }}>No working hours saved yet.</span>
+                      )}
+                  
+                  </div>
+
+                  {workingHours.map((row, index) => (
+                    <div key={`${row.days}-${index}`} className="border rounded-3 p-3 mb-2" style={{ background: "var(--color-bg)" }}>
+                      <div className="row g-2 align-items-end">
+                        <div className="col-md-4">
+                          <label className="form-label mb-1">Days</label>
+                          <select
+                            className="form-select"
+                            value={row.days}
+                            onChange={(e) => updateWorkingHour(index, "days", e.target.value)}
+                          >
+                            <option value="">Select days</option>
+                            <option value="Mon-Fri">Mon-Fri</option>
+                            <option value="Mon-Sat">Mon-Sat</option>
+                            <option value="Mon-Sun">Mon-Sun</option>
+                            <option value="Tue-Sun">Tue-Sun</option>
+                            <option value="Sat-Sun">Sat-Sun</option>
+                            <option value="Sun">Sun</option>
+                          </select>
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label mb-1">Open</label>
+                          <input
+                            type="time"
+                            className="form-control"
+                            step="900"
+                            value={row.openTime}
+                            onChange={(e) => updateWorkingHour(index, "openTime", e.target.value)}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label mb-1">Close</label>
+                          <input
+                            type="time"
+                            className="form-control"
+                            step="900"
+                            value={row.closeTime}
+                            onChange={(e) => updateWorkingHour(index, "closeTime", e.target.value)}
+                          />
+                        </div>
+                        <div className="col-md-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger m-1 w-50"
+                            onClick={() => removeWorkingHourRow(index)}
+                            disabled={workingHours.length === 1}
+                          >
+                            <i className="bi bi-trash3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -396,9 +565,6 @@ export default function CompanyDetails() {
                   <p className="fw-semibold mb-0">Company Images</p>
                   {images.length > 0 && <span className="text-muted-brand" style={{ fontSize: "0.8rem" }}>{images.length} images</span>}
                 </div>
-
-                {message && <div className="alert-brand-danger mb-3" style={{ fontSize: "0.82rem" }}>{message}</div>}
-
                 <div
                   className="upload-dropzone py-4"
                   style={{ minHeight: 120 }}
@@ -406,12 +572,12 @@ export default function CompanyDetails() {
                 >
                   <i className="bi bi-images text-muted-brand mb-2" style={{ fontSize: "1.6rem" }} />
                   <p className="fw-semibold mb-1" style={{ fontSize: "0.9rem" }}>Click to add images</p>
-                  <p className="text-muted-brand mb-0" style={{ fontSize: "0.78rem" }}>PNG or JPG, multiple allowed</p>
+                  <p className="text-muted-brand mb-0" style={{ fontSize: "0.78rem" }}>PNG,JPG,WEBP, multiple allowed</p>
                 </div>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/png, image/jpeg"
+                  accept="image/png, image/jpeg, image/webp"
                   multiple
                   className="d-none"
                   onChange={onFilesChosen}
@@ -459,7 +625,6 @@ export default function CompanyDetails() {
           </div>
 
           <div className="d-flex justify-content-end gap-2 flex-wrap">
-            {saved && <span className="text-primary-brand fw-semibold align-self-center me-auto"><i className="bi bi-check-circle-fill me-1" />Saved!</span>}
             <button type="button" className="btn btn-brand-outline rounded-3 px-4" onClick={() => navigate(COMPANY_MANAGEMENT_ROLES.includes(user?.role) ? "/my-company" : "/companies")}>Cancel</button>
             <button type="submit" className="btn btn-brand rounded-3 px-4">
               <i className="bi bi-save me-2" /> Save Company

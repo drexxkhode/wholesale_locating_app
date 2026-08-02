@@ -165,7 +165,10 @@ let system_logo = existing[0]?.system_logo || null;
 
     res.json({
       message: "System details updated successfully",
-      system_logo
+      system_logo,
+      system_name,
+      other_name,
+      system_email
     });
 
   } catch (err) {
@@ -228,14 +231,14 @@ exports.deleteLogo = async (req, res) => {
   }
 };
 
-exports.getLogo = async (req, res) =>{
+exports.getSystemDetail = async (req, res) =>{
   try {
     const [rows] = await db.query(
-      "SELECT id, system_logo FROM system_details LIMIT 1"
+      "SELECT id, system_name, other_name, system_email, system_logo FROM system_details LIMIT 1"
     );
 
     if (!rows.length) {
-      return res.status(404).json({ message: "No logo found" });
+      return res.status(404).json({ message: "No system details found" });
     }
 
     res.json(rows[0]);
